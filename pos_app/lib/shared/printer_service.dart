@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter_pos_printer_platform_image_3/flutter_pos_printer_platform_image_3.dart';
 import 'package:flutter_esc_pos_utils/flutter_esc_pos_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'models.dart';
+import 'package:pos_server_client/pos_server_client.dart';
 
 class PrinterService {
   static final PrinterService _instance = PrinterService._internal();
@@ -10,13 +10,14 @@ class PrinterService {
   PrinterService._internal();
 
   final PrinterManager _printerManager = PrinterManager.instance;
-  
+
   PrinterDevice? selectedPrinter;
   bool isConnected = false;
-  
+
   StreamSubscription<PrinterDevice>? _subscription;
 
-  final StreamController<List<PrinterDevice>> _devicesController = StreamController<List<PrinterDevice>>.broadcast();
+  final StreamController<List<PrinterDevice>> _devicesController =
+      StreamController<List<PrinterDevice>>.broadcast();
   Stream<List<PrinterDevice>> get devicesStream => _devicesController.stream;
 
   final List<PrinterDevice> _devices = [];
@@ -44,12 +45,14 @@ class PrinterService {
     _devicesController.add(_devices);
 
     _subscription?.cancel();
-    _subscription = _printerManager.discovery(type: PrinterType.bluetooth).listen((PrinterDevice device) {
-      if (!_devices.any((d) => d.address == device.address)) {
-        _devices.add(device);
-        _devicesController.add(_devices);
-      }
-    });
+    _subscription = _printerManager
+        .discovery(type: PrinterType.bluetooth)
+        .listen((PrinterDevice device) {
+          if (!_devices.any((d) => d.address == device.address)) {
+            _devices.add(device);
+            _devicesController.add(_devices);
+          }
+        });
   }
 
   void stopScan() {
@@ -68,7 +71,7 @@ class PrinterService {
     );
     selectedPrinter = device;
     isConnected = true;
-    
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('saved_printer_address', device.address ?? '');
     await prefs.setString('saved_printer_name', device.name);
@@ -84,40 +87,58 @@ class PrinterService {
 
   Future<void> testPrint() async {
     if (!isConnected || selectedPrinter == null) return;
-    
+
     final profile = await CapabilityProfile.load();
     final generator = Generator(PaperSize.mm80, profile);
-    
+
     List<int> bytes = [];
 
-    bytes += generator.text('POS System', styles: const PosStyles(
-      align: PosAlign.center,
-      height: PosTextSize.size2,
-      width: PosTextSize.size2,
-    ));
-    bytes += generator.text('Test Print Successful!', styles: const PosStyles(align: PosAlign.center));
+    bytes += generator.text(
+      'POS System',
+      styles: const PosStyles(
+        align: PosAlign.center,
+        height: PosTextSize.size2,
+        width: PosTextSize.size2,
+      ),
+    );
+    bytes += generator.text(
+      'Test Print Successful!',
+      styles: const PosStyles(align: PosAlign.center),
+    );
     bytes += generator.feed(2);
     bytes += generator.cut();
 
     await _printerManager.send(type: PrinterType.bluetooth, bytes: bytes);
   }
 
-  Future<void> printReceipt(Bill bill) async {
+  Future<void> printReceipt(
+    Bill bill, {
+    List<OrderItem> items = const [],
+  }) async {
     if (!isConnected || selectedPrinter == null) return;
 
     final profile = await CapabilityProfile.load();
     final generator = Generator(PaperSize.mm80, profile);
     List<int> bytes = [];
 
-    // Header
-    bytes += generator.text('RESTAURANT POS', styles: const PosStyles(
-      align: PosAlign.center, height: PosTextSize.size2, width: PosTextSize.size2, bold: true,
-    ));
-    bytes += generator.text('--------------------------------', styles: const PosStyles(align: PosAlign.center));
+    bytes += generator.text(
+      'RESTAURANT POS',
+      styles: const PosStyles(
+        align: PosAlign.center,
+        height: PosTextSize.size2,
+        width: PosTextSize.size2,
+        bold: true,
+      ),
+    );
+    bytes += generator.text(
+      '--------------------------------',
+      styles: const PosStyles(align: PosAlign.center),
+    );
     bytes += generator.feed(1);
-
-    // Bill info
-    bytes += generator.text('Bill: ${bill.billNumber}', styles: const PosStyles(bold: true));
+    bytes += generator.text(
+      'Bill: ${bill.billNumber}',
+      styles: const PosStyles(bold: true),
+    );
     if (bill.tableNo != null) {
       bytes += generator.text('Table: ${bill.tableNo}');
     }
@@ -127,63 +148,56 @@ class PrinterService {
     if (bill.waiterName != null) {
       bytes += generator.text('Waiter: ${bill.waiterName}');
     }
-    bytes += generator.text('Date: ${bill.createdAt.toString().substring(0, 16)}');
-    bytes += generator.text('--------------------------------', styles: const PosStyles(align: PosAlign.center));
+    bytes += generator.text(
+      '--------------------------------',
+      styles: const PosStyles(align: PosAlign.center),
+    );
 
-    // Items
-    if (bill.items != null && bill.items!.isNotEmpty) {
-      for (final item in bill.items!) {
-        bytes += generator.row([
-          PosColumn(text: '${item.quantity}x ${item.name}', width: 8, styles: const PosStyles(bold: true)),
-          PosColumn(text: '\$${item.totalPrice.toStringAsFixed(2)}', width: 4, styles: const PosStyles(align: PosAlign.right)),
-        ]);
-        if (item.extras.isNotEmpty) {
-          for (final extra in item.extras) {
-            bytes += generator.text('  + ${extra.name} (\$${extra.price.toStringAsFixed(2)})', styles: const PosStyles(fontType: PosFontType.fontB));
-          }
-        }
-      }
+    for (final item in items) {
+      bytes += generator.row([
+        PosColumn(
+          text: '${item.quantity}x ${item.productName}',
+          width: 8,
+          styles: const PosStyles(bold: true),
+        ),
+        PosColumn(
+          text: '\$${item.totalPrice.toStringAsFixed(2)}',
+          width: 4,
+          styles: const PosStyles(align: PosAlign.right),
+        ),
+      ]);
     }
 
-    bytes += generator.text('--------------------------------', styles: const PosStyles(align: PosAlign.center));
-
-    // Totals
+    bytes += generator.text(
+      '--------------------------------',
+      styles: const PosStyles(align: PosAlign.center),
+    );
     bytes += generator.row([
-      PosColumn(text: 'Subtotal', width: 8),
-      PosColumn(text: '\$${bill.subtotal.toStringAsFixed(2)}', width: 4, styles: const PosStyles(align: PosAlign.right)),
+      PosColumn(
+        text: 'TOTAL',
+        width: 8,
+        styles: const PosStyles(
+          bold: true,
+          height: PosTextSize.size2,
+          width: PosTextSize.size2,
+        ),
+      ),
+      PosColumn(
+        text: '\$${bill.total.toStringAsFixed(2)}',
+        width: 4,
+        styles: const PosStyles(
+          bold: true,
+          height: PosTextSize.size2,
+          width: PosTextSize.size2,
+          align: PosAlign.right,
+        ),
+      ),
     ]);
-    if (bill.taxAmount > 0) {
-      bytes += generator.row([
-        PosColumn(text: 'Tax', width: 8),
-        PosColumn(text: '\$${bill.taxAmount.toStringAsFixed(2)}', width: 4, styles: const PosStyles(align: PosAlign.right)),
-      ]);
-    }
-    if (bill.serviceAmount > 0) {
-      bytes += generator.row([
-        PosColumn(text: 'Service', width: 8),
-        PosColumn(text: '\$${bill.serviceAmount.toStringAsFixed(2)}', width: 4, styles: const PosStyles(align: PosAlign.right)),
-      ]);
-    }
-    if (bill.tipAmount > 0) {
-      bytes += generator.row([
-        PosColumn(text: 'Tip', width: 8),
-        PosColumn(text: '\$${bill.tipAmount.toStringAsFixed(2)}', width: 4, styles: const PosStyles(align: PosAlign.right)),
-      ]);
-    }
-    bytes += generator.text('--------------------------------', styles: const PosStyles(align: PosAlign.center));
-    bytes += generator.row([
-      PosColumn(text: 'TOTAL', width: 8, styles: const PosStyles(bold: true, height: PosTextSize.size2, width: PosTextSize.size2)),
-      PosColumn(text: '\$${bill.total.toStringAsFixed(2)}', width: 4, styles: const PosStyles(bold: true, height: PosTextSize.size2, width: PosTextSize.size2, align: PosAlign.right)),
-    ]);
-
-    // Payment method
-    if (bill.paymentMethod != null) {
-      bytes += generator.feed(1);
-      bytes += generator.text('Paid by: ${bill.paymentMethod}', styles: const PosStyles(align: PosAlign.center));
-    }
-
     bytes += generator.feed(1);
-    bytes += generator.text('Thank you!', styles: const PosStyles(align: PosAlign.center, bold: true));
+    bytes += generator.text(
+      'Thank you!',
+      styles: const PosStyles(align: PosAlign.center, bold: true),
+    );
     bytes += generator.feed(2);
     bytes += generator.cut();
 

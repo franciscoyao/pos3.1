@@ -1,0 +1,14 @@
+class: PosUser
+table: pos_users
+fields:
+  fullName: String?
+  username: String
+  pin: String?
+  role: String
+  status: String, default='Active'
+  isDefault: bool, default=false
+  createdAt: DateTime?
+indexes:
+  pos_users_username_idx:
+    fields: username
+    unique: true

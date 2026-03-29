@@ -1,0 +1,5 @@
+### Real-time broadcast event sent to all connected clients.
+class: PosEvent
+fields:
+  eventType: String
+  payload: String?

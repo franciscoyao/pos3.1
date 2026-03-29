@@ -1,0 +1,15 @@
+class: Product
+table: products
+fields:
+  categoryId: int?
+  subcategoryId: int?
+  itemCode: String?
+  name: String
+  price: double
+  imageUrl: String?
+  station: String?
+  type: String?
+  isAvailable: bool, default=true
+  allowPriceEdit: bool, default=false
+  isDeleted: bool, default=false
+  extras: List<ProductExtra>?

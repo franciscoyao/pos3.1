@@ -1,0 +1,44 @@
+services:
+  # Development services
+  postgres:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "8090:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: pos_server
+      POSTGRES_PASSWORD: "TPHPEpqaYVfpXDL8y96BGd9wE6l6QIIP"
+    volumes:
+      - pos_server_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:6.2.6
+    ports:
+      - "8091:6379"
+    command: redis-server --requirepass "g7AOoa6Y_m2abYZvDYXYP1RteGFApjKP"
+    environment:
+      - REDIS_REPLICATION_MODE=master
+
+  # Test services
+  postgres_test:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "9090:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: pos_server_test
+      POSTGRES_PASSWORD: "92kUFArJ63pJVTlC5ZhUBH_CnOEspEGO"
+    volumes:
+      - pos_server_test_data:/var/lib/postgresql/data
+
+  redis_test:
+    image: redis:6.2.6
+    ports:
+      - "9091:6379"
+    command: redis-server --requirepass "MogQryt6eBnP-eh9jAc1PIJwkBBVI05q"
+    environment:
+      - REDIS_REPLICATION_MODE=master
+
+volumes:
+  pos_server_data:
+  pos_server_test_data:

@@ -1,0 +1,19 @@
+class: Bill
+table: bills
+fields:
+  billNumber: String
+  orderType: String?
+  tableNo: String?
+  waiterName: String?
+  paymentMethod: String?
+  taxNumber: String?
+  subtotal: double, default=0
+  taxAmount: double, default=0
+  serviceAmount: double, default=0
+  tipAmount: double, default=0
+  total: double
+  createdAt: DateTime?
+indexes:
+  bills_bill_number_idx:
+    fields: billNumber
+    unique: true

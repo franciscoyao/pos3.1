@@ -1,0 +1,7 @@
+class: Category
+table: categories
+fields:
+  name: String
+  sortOrder: int, default=0
+  station: String?
+  orderType: String, default='Both'

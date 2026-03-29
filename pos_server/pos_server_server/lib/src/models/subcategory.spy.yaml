@@ -1,0 +1,9 @@
+class: Subcategory
+table: subcategories
+fields:
+  categoryId: int
+  name: String
+  sortOrder: int, default=0
+indexes:
+  subcategories_category_idx:
+    fields: categoryId

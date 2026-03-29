@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:pos_server_client/pos_server_client.dart';
+import 'package:serverpod_flutter/serverpod_flutter.dart';
 import 'login_screen.dart';
 
-void main() {
+late final Client client;
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  client = Client('http://localhost:8080/')
+    ..connectivityMonitor = FlutterConnectivityMonitor();
+
   runApp(const POSApp());
 }
 

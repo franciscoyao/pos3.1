@@ -1,0 +1,9 @@
+class: ProductExtra
+table: product_extras
+fields:
+  productId: int
+  name: String
+  price: double, default=0
+indexes:
+  product_extras_product_idx:
+    fields: productId

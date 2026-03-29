@@ -1,0 +1,21 @@
+class: PosOrder
+table: pos_orders
+fields:
+  billId: int?
+  orderCode: String?
+  orderType: String?
+  tableNo: String?
+  status: String, default='Pending'
+  waiterName: String?
+  subtotal: double, default=0
+  taxAmount: double, default=0
+  serviceAmount: double, default=0
+  tipAmount: double, default=0
+  total: double
+  createdAt: DateTime?
+  updatedAt: DateTime?
+  items: List<OrderItem>?
+indexes:
+  pos_orders_order_code_idx:
+    fields: orderCode
+    unique: true

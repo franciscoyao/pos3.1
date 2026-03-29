@@ -1,0 +1,15 @@
+class: OrderItem
+table: order_items
+fields:
+  orderId: int
+  productId: int
+  productName: String?
+  productStation: String?
+  quantity: int
+  price: double
+  totalPrice: double, default=0
+  notes: String?
+  extras: String?, default='[]'
+indexes:
+  order_items_order_idx:
+    fields: orderId

@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'shared/api_service.dart';
-import 'shared/models.dart';
+import 'main.dart';
 import 'waiter/waiter_shell.dart';
 import 'admin/admin_dashboard_screen.dart';
 import 'admin/settings_view.dart';
 import 'kitchen/kitchen_screen.dart';
 import 'bar/bar_screen.dart';
 import 'kiosk/kiosk_screen.dart';
-import 'shared/socket_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,20 +15,31 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final ApiService apiService = ApiService();
   String selectedRole = 'Admin';
-  
+
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController pinController = TextEditingController();
   bool isLoading = false;
   String? errorMessage;
 
   final List<Map<String, dynamic>> roles = [
-    {'name': 'Admin', 'icon': Icons.person_outline, 'big_icon': Icons.admin_panel_settings},
+    {
+      'name': 'Admin',
+      'icon': Icons.person_outline,
+      'big_icon': Icons.admin_panel_settings,
+    },
     {'name': 'Waiter', 'icon': Icons.people_outline, 'big_icon': Icons.people},
-    {'name': 'Kitchen', 'icon': Icons.restaurant_menu, 'big_icon': Icons.soup_kitchen},
+    {
+      'name': 'Kitchen',
+      'icon': Icons.restaurant_menu,
+      'big_icon': Icons.soup_kitchen,
+    },
     {'name': 'Bar', 'icon': Icons.local_bar, 'big_icon': Icons.local_bar},
-    {'name': 'Kiosk', 'icon': Icons.desktop_windows, 'big_icon': Icons.point_of_sale},
+    {
+      'name': 'Kiosk',
+      'icon': Icons.desktop_windows,
+      'big_icon': Icons.point_of_sale,
+    },
   ];
 
   void _onRoleSelected(String role) {
@@ -39,7 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
       errorMessage = null;
       usernameController.clear();
       pinController.clear();
-      
+
       if (role == 'Admin') {
         usernameController.text = 'admin';
         pinController.text = '1111';
@@ -72,17 +81,27 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  /// Authenticate using Serverpod client
   Future<void> _login() async {
-    if (selectedRole == 'Kitchen' || selectedRole == 'Bar' || selectedRole == 'Kiosk') {
-      final user = User(id: 0, username: selectedRole.toLowerCase(), role: selectedRole);
-      SocketService().init();
-      if (selectedRole == 'Kitchen') {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => KitchenScreen(user: user)));
-      } else if (selectedRole == 'Bar') {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => BarScreen(user: user)));
-      } else if (selectedRole == 'Kiosk') {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => KioskScreen(user: user)));
-      }
+    if (selectedRole == 'Kitchen') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const KitchenScreen()),
+      );
+      return;
+    }
+    if (selectedRole == 'Bar') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const BarScreen()),
+      );
+      return;
+    }
+    if (selectedRole == 'Kiosk') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const KioskScreen()),
+      );
       return;
     }
 
@@ -91,66 +110,59 @@ class _LoginScreenState extends State<LoginScreen> {
       errorMessage = null;
     });
 
+    final username = usernameController.text.trim();
+    final pin = pinController.text.trim();
+
+    if (username.isEmpty || pin.isEmpty) {
+      setState(() {
+        errorMessage = 'Please enter Username and PIN';
+        isLoading = false;
+      });
+      return;
+    }
+
     try {
-      String username = usernameController.text.trim();
-      String pin = pinController.text.trim();
+      final user = await client.users.login(selectedRole, username, pin);
 
-      if (username.isEmpty || pin.isEmpty) {
-        setState(() {
-          errorMessage = 'Please enter Username and PIN';
-          isLoading = false;
-        });
-        return;
-      }
-
-      User? user = await apiService.login(selectedRole, username: username, pin: pin);
-
-      // Fallback for first-time admin login when backend is unreachable
-      if (user == null && selectedRole == 'Admin' && username == 'admin' && pin == '1111') {
-        user = User(id: 0, username: 'admin', role: 'Admin');
-      }
+      if (!mounted) return;
+      setState(() => isLoading = false);
 
       if (user != null) {
-        if (!mounted) return;
-        SocketService().init();
-        if (user.role == 'Admin') {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AdminDashboardScreen(user: user!)));
-        } else if (user.role == 'Waiter') {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => WaiterShell(user: user!)));
-        } else if (user.role == 'Kitchen') {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => KitchenScreen(user: user!)));
-        } else if (user.role == 'Bar') {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => BarScreen(user: user!)));
-        } else if (user.role == 'Kiosk') {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => KioskScreen(user: user!)));
-        } else {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => WaiterShell(user: user!)));
+        if (selectedRole == 'Admin') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+          );
+        } else if (selectedRole == 'Waiter') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const WaiterShell(role: 'Waiter'),
+            ),
+          );
         }
       } else {
         setState(() {
-          errorMessage = 'Invalid credentials or backend not running';
+          errorMessage = 'Invalid username or PIN';
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        errorMessage = 'Connection error: $e';
+        isLoading = false;
+        errorMessage = 'Connection failed: ${e.toString()}';
       });
-    } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool requiresAuth = selectedRole == 'Admin' || selectedRole == 'Waiter';
+    final bool requiresAuth =
+        selectedRole == 'Admin' || selectedRole == 'Waiter';
     final selectedRoleData = roles.firstWhere((r) => r['name'] == selectedRole);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1E293B), // Dark slate blue background
+      backgroundColor: const Color(0xFF1E293B),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -159,7 +171,10 @@ class _LoginScreenState extends State<LoginScreen> {
             icon: const Icon(Icons.settings, color: Colors.white70),
             tooltip: 'Server Settings',
             onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsView()));
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsView()),
+              );
             },
           ),
           const SizedBox(width: 16),
@@ -195,14 +210,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 8),
                 const Text(
                   'Select your role to continue',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF64748B),
-                  ),
+                  style: TextStyle(fontSize: 16, color: Color(0xFF64748B)),
                 ),
                 const SizedBox(height: 24),
-                
-                // Role Selector Segmented Control
+
+                // Role selector
                 Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
@@ -214,16 +226,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       final isSelected = selectedRole == role['name'];
                       return Expanded(
                         child: GestureDetector(
-                          onTap: () => _onRoleSelected(role['name']),
+                          onTap: () => _onRoleSelected(role['name'] as String),
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             decoration: BoxDecoration(
-                              color: isSelected ? Colors.white : Colors.transparent,
+                              color: isSelected
+                                  ? Colors.white
+                                  : Colors.transparent,
                               borderRadius: BorderRadius.circular(8),
                               boxShadow: isSelected
                                   ? [
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.05),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.05,
+                                        ),
                                         blurRadius: 4,
                                         offset: const Offset(0, 2),
                                       ),
@@ -235,15 +251,21 @@ class _LoginScreenState extends State<LoginScreen> {
                                 Icon(
                                   role['icon'] as IconData,
                                   size: 20,
-                                  color: isSelected ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+                                  color: isSelected
+                                      ? const Color(0xFF0F172A)
+                                      : const Color(0xFF64748B),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   role['name'] as String,
                                   style: TextStyle(
                                     fontSize: 12,
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                    color: isSelected ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.w500,
+                                    color: isSelected
+                                        ? const Color(0xFF0F172A)
+                                        : const Color(0xFF64748B),
                                   ),
                                 ),
                               ],
@@ -254,20 +276,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     }).toList(),
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
-                // Huge selected role icon
+
                 Icon(
                   selectedRoleData['big_icon'] as IconData,
                   size: 48,
                   color: const Color(0xFF0F172A),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 if (requiresAuth) ...[
-                  // Username Field
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -290,15 +310,15 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderRadius: BorderRadius.circular(8),
                             borderSide: BorderSide.none,
                           ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  
                   const SizedBox(height: 16),
-                  
-                  // PIN Field
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -322,13 +342,16 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderRadius: BorderRadius.circular(8),
                             borderSide: BorderSide.none,
                           ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ],
-                
+
                 if (!requiresAuth) ...[
                   Text(
                     'Quick access to $selectedRole Display',
@@ -338,7 +361,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ],
-                
+
                 if (errorMessage != null && requiresAuth) ...[
                   const SizedBox(height: 16),
                   Text(
@@ -347,10 +370,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     textAlign: TextAlign.center,
                   ),
                 ],
-                
+
                 const SizedBox(height: 24),
-                
-                // Login Button
+
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -367,15 +389,23 @@ class _LoginScreenState extends State<LoginScreen> {
                         ? const SizedBox(
                             width: 24,
                             height: 24,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
                           )
                         : Text(
-                            requiresAuth ? 'Login as $selectedRole' : 'Enter $selectedRole Mode',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            requiresAuth
+                                ? 'Login as $selectedRole'
+                                : 'Enter $selectedRole Mode',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                   ),
                 ),
-                
+
                 if (selectedRole == 'Admin') ...[
                   const SizedBox(height: 16),
                   const Text(
@@ -390,7 +420,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
                   ),
                 ],
-
               ],
             ),
           ),

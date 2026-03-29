@@ -1,0 +1,12 @@
+class: RestaurantTable
+table: restaurant_tables
+fields:
+  tableNumber: String
+  status: String, default='Available'
+  orderCode: String?
+  guestCount: int, default=0
+  updatedAt: DateTime?
+indexes:
+  restaurant_tables_number_idx:
+    fields: tableNumber
+    unique: true

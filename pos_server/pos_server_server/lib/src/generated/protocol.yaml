@@ -1,0 +1,56 @@
+emailIdp:
+  - login:
+  - startRegistration:
+  - verifyRegistrationCode:
+  - finishRegistration:
+  - startPasswordReset:
+  - verifyPasswordResetCode:
+  - finishPasswordReset:
+  - hasAccount:
+jwtRefresh:
+  - refreshAccessToken:
+categories:
+  - getAll:
+  - create:
+  - update:
+  - delete:
+checkout:
+  - checkout:
+  - getAll:
+  - getDetails:
+events:
+  - subscribe:
+orders:
+  - getAll:
+  - getById:
+  - create:
+  - updateStatus:
+  - merge:
+  - split:
+products:
+  - getAll:
+  - getPopular:
+  - create:
+  - update:
+  - delete:
+  - addExtra:
+  - deleteExtra:
+reports:
+  - getSummaryJson:
+subcategories:
+  - getAll:
+  - create:
+  - update:
+  - delete:
+tables:
+  - getAll:
+  - create:
+  - update:
+users:
+  - getAll:
+  - create:
+  - update:
+  - delete:
+  - login:
+greeting:
+  - hello:
