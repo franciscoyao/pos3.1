@@ -1,15 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:pos_server_client/pos_server_client.dart';
 import 'package:serverpod_flutter/serverpod_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'login_screen.dart';
 
-late final Client client;
+late Client client;
+
+/// Initialize or re-initialize the Serverpod client
+Future<void> initClient() async {
+  final prefs = await SharedPreferences.getInstance();
+  final serverIp = prefs.getString('server_ip') ?? '192.168.1.126';
+
+  client = Client('http://$serverIp:8080/')
+    ..connectivityMonitor = FlutterConnectivityMonitor();
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  client = Client('http://localhost:8080/')
-    ..connectivityMonitor = FlutterConnectivityMonitor();
+
+  await initClient();
 
   runApp(const POSApp());
 }

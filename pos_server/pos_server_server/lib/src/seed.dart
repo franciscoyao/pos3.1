@@ -4,11 +4,51 @@ import 'generated/protocol.dart';
 /// Seeds default users into the database if they do not already exist.
 Future<void> seedDatabase(Session session) async {
   final defaults = [
-    PosUser(fullName: 'Admin User',       username: 'admin',   pin: '1111', role: 'Admin',   isDefault: true, status: 'Active', createdAt: DateTime.now()),
-    PosUser(fullName: 'Waiter User',      username: 'waiter',  pin: '1234', role: 'Waiter',  isDefault: true, status: 'Active', createdAt: DateTime.now()),
-    PosUser(fullName: 'Kitchen Display',  username: 'kitchen', pin: null,   role: 'Kitchen', isDefault: true, status: 'Active', createdAt: DateTime.now()),
-    PosUser(fullName: 'Bar Display',      username: 'bar',     pin: null,   role: 'Bar',     isDefault: true, status: 'Active', createdAt: DateTime.now()),
-    PosUser(fullName: 'Kiosk Display',    username: 'kiosk',   pin: null,   role: 'Kiosk',   isDefault: true, status: 'Active', createdAt: DateTime.now()),
+    PosUser(
+      fullName: 'Admin User',
+      username: 'admin',
+      pin: '1111',
+      role: 'Admin',
+      isDefault: true,
+      status: 'Active',
+      createdAt: DateTime.now(),
+    ),
+    PosUser(
+      fullName: 'Waiter User',
+      username: 'waiter',
+      pin: '2222',
+      role: 'Waiter',
+      isDefault: true,
+      status: 'Active',
+      createdAt: DateTime.now(),
+    ),
+    PosUser(
+      fullName: 'Kitchen Display',
+      username: 'kitchen',
+      pin: null,
+      role: 'Kitchen',
+      isDefault: true,
+      status: 'Active',
+      createdAt: DateTime.now(),
+    ),
+    PosUser(
+      fullName: 'Bar Display',
+      username: 'bar',
+      pin: null,
+      role: 'Bar',
+      isDefault: true,
+      status: 'Active',
+      createdAt: DateTime.now(),
+    ),
+    PosUser(
+      fullName: 'Kiosk Display',
+      username: 'kiosk',
+      pin: null,
+      role: 'Kiosk',
+      isDefault: true,
+      status: 'Active',
+      createdAt: DateTime.now(),
+    ),
   ];
 
   for (final user in defaults) {
@@ -20,6 +60,14 @@ Future<void> seedDatabase(Session session) async {
     if (existing.isEmpty) {
       await PosUser.db.insertRow(session, user);
       session.log('Seeded user: ${user.username}');
+    } else {
+      // Update PIN if it has changed
+      final current = existing.first;
+      if (current.pin != user.pin) {
+        final updated = current.copyWith(pin: user.pin);
+        await PosUser.db.updateRow(session, updated);
+        session.log('Updated PIN for user: ${user.username}');
+      }
     }
   }
 }

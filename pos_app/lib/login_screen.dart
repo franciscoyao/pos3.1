@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'main.dart';
 import 'waiter/waiter_shell.dart';
 import 'admin/admin_dashboard_screen.dart';
-import 'admin/settings_view.dart';
 import 'kitchen/kitchen_screen.dart';
 import 'bar/bar_screen.dart';
 import 'kiosk/kiosk_screen.dart';
@@ -14,8 +13,10 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   String selectedRole = 'Admin';
+  late AnimationController _fadeController;
 
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController pinController = TextEditingController();
@@ -25,22 +26,40 @@ class _LoginScreenState extends State<LoginScreen> {
   final List<Map<String, dynamic>> roles = [
     {
       'name': 'Admin',
-      'icon': Icons.person_outline,
-      'big_icon': Icons.admin_panel_settings,
+      'icon': Icons.manage_accounts_outlined,
+      'gradient': [Color(0xFF0F172A), Color(0xFF1E293B)],
     },
-    {'name': 'Waiter', 'icon': Icons.people_outline, 'big_icon': Icons.people},
+    {
+      'name': 'Waiter',
+      'icon': Icons.groups_outlined,
+      'gradient': [Color(0xFF0F172A), Color(0xFF1E293B)],
+    },
     {
       'name': 'Kitchen',
-      'icon': Icons.restaurant_menu,
-      'big_icon': Icons.soup_kitchen,
+      'icon': Icons.soup_kitchen_outlined,
+      'gradient': [Color(0xFF0F172A), Color(0xFF1E293B)],
     },
-    {'name': 'Bar', 'icon': Icons.local_bar, 'big_icon': Icons.local_bar},
+    {
+      'name': 'Bar',
+      'icon': Icons.wine_bar_outlined,
+      'gradient': [Color(0xFF0F172A), Color(0xFF1E293B)],
+    },
     {
       'name': 'Kiosk',
-      'icon': Icons.desktop_windows,
-      'big_icon': Icons.point_of_sale,
+      'icon': Icons.desktop_windows_outlined,
+      'gradient': [Color(0xFF0F172A), Color(0xFF1E293B)],
     },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _onRoleSelected('Admin');
+  }
 
   void _onRoleSelected(String role) {
     setState(() {
@@ -54,74 +73,47 @@ class _LoginScreenState extends State<LoginScreen> {
         pinController.text = '1111';
       } else if (role == 'Waiter') {
         usernameController.text = 'waiter';
-        pinController.text = '1234';
-      } else if (role == 'Kitchen') {
-        usernameController.text = 'kitchen';
-        pinController.text = '1234';
-      } else if (role == 'Bar') {
-        usernameController.text = 'bar';
-        pinController.text = '1234';
-      } else if (role == 'Kiosk') {
-        usernameController.text = 'kiosk';
-        pinController.text = '1234';
+        pinController.text = '2222';
+      } else {
+        usernameController.clear();
+        pinController.clear();
       }
     });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _onRoleSelected('Admin');
+    _fadeController.forward(from: 0.0);
   }
 
   @override
   void dispose() {
     usernameController.dispose();
     pinController.dispose();
+    _fadeController.dispose();
     super.dispose();
   }
 
-  /// Authenticate using Serverpod client
   Future<void> _login() async {
-    if (selectedRole == 'Kitchen') {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const KitchenScreen()),
-      );
-      return;
-    }
-    if (selectedRole == 'Bar') {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const BarScreen()),
-      );
-      return;
-    }
-    if (selectedRole == 'Kiosk') {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const KioskScreen()),
-      );
-      return;
-    }
-
     setState(() {
       isLoading = true;
       errorMessage = null;
     });
 
-    final username = usernameController.text.trim();
-    final pin = pinController.text.trim();
-
-    if (username.isEmpty || pin.isEmpty) {
-      setState(() {
-        errorMessage = 'Please enter Username and PIN';
-        isLoading = false;
-      });
-      return;
-    }
-
     try {
+      final String? username =
+          (selectedRole == 'Admin' || selectedRole == 'Waiter')
+          ? usernameController.text.trim()
+          : null;
+      final String? pin = (selectedRole == 'Admin' || selectedRole == 'Waiter')
+          ? pinController.text.trim()
+          : null;
+
+      if ((selectedRole == 'Admin' || selectedRole == 'Waiter') &&
+          (username!.isEmpty || pin!.isEmpty)) {
+        setState(() {
+          errorMessage = 'Please enter Username and PIN';
+          isLoading = false;
+        });
+        return;
+      }
+
       final user = await client.users.login(selectedRole, username, pin);
 
       if (!mounted) return;
@@ -140,6 +132,21 @@ class _LoginScreenState extends State<LoginScreen> {
               builder: (_) => const WaiterShell(role: 'Waiter'),
             ),
           );
+        } else if (selectedRole == 'Kitchen') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const KitchenScreen()),
+          );
+        } else if (selectedRole == 'Bar') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const BarScreen()),
+          );
+        } else if (selectedRole == 'Kiosk') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const KioskScreen()),
+          );
         }
       } else {
         setState(() {
@@ -150,7 +157,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       setState(() {
         isLoading = false;
-        errorMessage = 'Connection failed: ${e.toString()}';
+        errorMessage = 'Connection failed. Check server IP in Settings.';
       });
     }
   }
@@ -159,271 +166,292 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final bool requiresAuth =
         selectedRole == 'Admin' || selectedRole == 'Waiter';
-    final selectedRoleData = roles.firstWhere((r) => r['name'] == selectedRole);
+    final currentRoleData = roles.firstWhere((r) => r['name'] == selectedRole);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1E293B),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings, color: Colors.white70),
-            tooltip: 'Server Settings',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SettingsView()),
-              );
-            },
-          ),
-          const SizedBox(width: 16),
-        ],
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          child: Container(
-            width: 480,
-            padding: const EdgeInsets.all(40),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
+      backgroundColor: const Color(0xFF0F172A),
+      body: Stack(
+        children: [
+          Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+              child: Container(
+                width: 500,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 30,
+                      offset: const Offset(0, 15),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'POS System',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Select your role to continue',
-                  style: TextStyle(fontSize: 16, color: Color(0xFF64748B)),
-                ),
-                const SizedBox(height: 24),
+                child: Padding(
+                  padding: const EdgeInsets.all(40),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'POS System',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Select your role to continue',
+                        style: TextStyle(fontSize: 16, color: Colors.black45),
+                      ),
+                      const SizedBox(height: 32),
 
-                // Role selector
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: roles.map((role) {
-                      final isSelected = selectedRole == role['name'];
-                      return Expanded(
-                        child: GestureDetector(
-                          onTap: () => _onRoleSelected(role['name'] as String),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? Colors.white
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: isSelected
-                                  ? [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.05,
-                                        ),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  role['icon'] as IconData,
-                                  size: 20,
-                                  color: isSelected
-                                      ? const Color(0xFF0F172A)
-                                      : const Color(0xFF64748B),
+                      _buildRoleSelector(),
+
+                      const SizedBox(height: 32),
+
+                      FadeTransition(
+                        opacity: _fadeController,
+                        child: SlideTransition(
+                          position:
+                              Tween<Offset>(
+                                begin: const Offset(0, 0.05),
+                                end: Offset.zero,
+                              ).animate(
+                                CurvedAnimation(
+                                  parent: _fadeController,
+                                  curve: Curves.easeOutCubic,
                                 ),
-                                const SizedBox(height: 4),
+                              ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                currentRoleData['icon'],
+                                size: 48,
+                                color: const Color(0xFF0F172A),
+                              ),
+                              const SizedBox(height: 24),
+
+                              if (requiresAuth) ...[
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: const Text(
+                                    'Username',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildTextField(
+                                  controller: usernameController,
+                                  label: 'Enter username',
+                                ),
+                                const SizedBox(height: 20),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: const Text(
+                                    'PIN',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildTextField(
+                                  controller: pinController,
+                                  label: '4-digit PIN',
+                                  isPassword: true,
+                                ),
+                              ] else ...[
                                 Text(
-                                  role['name'] as String,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: isSelected
-                                        ? FontWeight.bold
-                                        : FontWeight.w500,
-                                    color: isSelected
-                                        ? const Color(0xFF0F172A)
-                                        : const Color(0xFF64748B),
+                                  'Quick access to $selectedRole Display',
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    color: Colors.black45,
                                   ),
                                 ),
                               ],
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
 
-                const SizedBox(height: 24),
+                              if (errorMessage != null) ...[
+                                const SizedBox(height: 20),
+                                Text(
+                                  errorMessage!,
+                                  style: const TextStyle(
+                                    color: Colors.redAccent,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
 
-                Icon(
-                  selectedRoleData['big_icon'] as IconData,
-                  size: 48,
-                  color: const Color(0xFF0F172A),
-                ),
+                              const SizedBox(height: 32),
 
-                const SizedBox(height: 24),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 56,
+                                child: ElevatedButton(
+                                  onPressed: isLoading ? null : _login,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF0F172A),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  child: isLoading
+                                      ? const SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : Text(
+                                          requiresAuth
+                                              ? 'Login as $selectedRole'
+                                              : 'Enter $selectedRole Mode',
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                ),
+                              ),
 
-                if (requiresAuth) ...[
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Username',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: usernameController,
-                        decoration: InputDecoration(
-                          hintText: 'Enter username',
-                          filled: true,
-                          fillColor: const Color(0xFFF8FAFC),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 16,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'PIN',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: pinController,
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          hintText: '4-digit PIN',
-                          filled: true,
-                          fillColor: const Color(0xFFF8FAFC),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 16,
+                              if (requiresAuth) ...[
+                                const SizedBox(height: 24),
+                                Text(
+                                  'Default: ${selectedRole.toLowerCase()} / ${selectedRole == 'Admin' ? '1111' : '2222'}',
+                                  style: const TextStyle(
+                                    color: Colors.black26,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                       ),
                     ],
                   ),
-                ],
-
-                if (!requiresAuth) ...[
-                  Text(
-                    'Quick access to $selectedRole Display',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                ],
-
-                if (errorMessage != null && requiresAuth) ...[
-                  const SizedBox(height: 16),
-                  Text(
-                    errorMessage!,
-                    style: const TextStyle(color: Colors.red, fontSize: 14),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-
-                const SizedBox(height: 24),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: isLoading ? null : _login,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0F172A),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: isLoading
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : Text(
-                            requiresAuth
-                                ? 'Login as $selectedRole'
-                                : 'Enter $selectedRole Mode',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                  ),
                 ),
-
-                if (selectedRole == 'Admin') ...[
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Default: admin / 1111',
-                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-                  ),
-                ],
-                if (selectedRole == 'Waiter') ...[
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Default: waiter / 1234',
-                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-                  ),
-                ],
-              ],
+              ),
             ),
           ),
+
+          // Help icon at bottom right
+          Positioned(
+            bottom: 24,
+            right: 24,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.help_outline,
+                color: Color(0xFF0F172A),
+                size: 24,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    bool isPassword = false,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: isPassword,
+        style: const TextStyle(color: Color(0xFF0F172A)),
+        decoration: InputDecoration(
+          hintText: label,
+          hintStyle: const TextStyle(color: Colors.black26),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 18,
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildRoleSelector() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: roles.map((role) {
+          final isSelected = selectedRole == role['name'];
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => _onRoleSelected(role['name'] as String),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : [],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      role['icon'],
+                      size: 20,
+                      color: isSelected
+                          ? const Color(0xFF0F172A)
+                          : Colors.black45,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      role['name'],
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: isSelected
+                            ? const Color(0xFF0F172A)
+                            : Colors.black45,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }

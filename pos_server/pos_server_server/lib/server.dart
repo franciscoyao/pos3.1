@@ -8,6 +8,7 @@ import 'src/generated/endpoints.dart';
 import 'src/generated/protocol.dart';
 import 'src/web/routes/app_config_route.dart';
 import 'src/web/routes/root.dart';
+import 'src/seed.dart';
 
 /// The starting point of the Serverpod server.
 void run(List<String> args) async {
@@ -75,6 +76,14 @@ void run(List<String> args) async {
 
   // Start the server.
   await pod.start();
+
+  // Seed default users
+  final session = await pod.createSession();
+  try {
+    await seedDatabase(session);
+  } finally {
+    await session.close();
+  }
 }
 
 void _sendRegistrationCode(
