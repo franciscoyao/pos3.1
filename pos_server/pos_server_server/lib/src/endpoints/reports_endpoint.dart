@@ -1,112 +1,136 @@
 import 'package:serverpod/serverpod.dart';
-
-class ReportSummaryData {
-  final double totalRevenue;
-  final int totalOrders;
-  final double avgOrderValue;
-  final List<Map<String, dynamic>> salesByDay;
-  final List<Map<String, dynamic>> salesByCategory;
-  final List<Map<String, dynamic>> topItems;
-
-  ReportSummaryData({
-    required this.totalRevenue,
-    required this.totalOrders,
-    required this.avgOrderValue,
-    required this.salesByDay,
-    required this.salesByCategory,
-    required this.topItems,
-  });
-}
+import 'dart:convert';
 
 class ReportsEndpoint extends Endpoint {
   Future<String> getSummaryJson(Session session) async {
-    // Overall stats from bills
-    final statsResult = await session.db.unsafeQuery(
-      'SELECT COALESCE(SUM(total), 0) AS total_revenue, COUNT(*) AS total_orders, COALESCE(AVG(total), 0) AS avg_order_value FROM bills',
-    );
-    final stats = statsResult.first;
+    try {
+      // Overall stats from bills
+      List<List<dynamic>> statsResult;
+      try {
+        statsResult = await session.db.unsafeQuery(
+          'SELECT COALESCE(SUM(total), 0.0) AS total_revenue, COUNT(*) AS total_orders, COALESCE(AVG(total), 0.0) AS avg_order_value FROM bills',
+        );
+      } catch (e) {
+        session.log('Error in stats query: $e', level: LogLevel.error);
+        statsResult = [];
+      }
 
-    // Sales by day — last 7 days
-    final salesByDayResult = await session.db.unsafeQuery('''
-      SELECT
-        TO_CHAR("createdAt"::date, 'YYYY-MM-DD') AS day,
-        COALESCE(SUM(total), 0) AS revenue,
-        COUNT(*) AS orders
-      FROM bills
-      WHERE "createdAt" >= NOW() - INTERVAL '7 days'
-      GROUP BY "createdAt"::date
-      ORDER BY "createdAt"::date ASC
-    ''');
+      final stats = statsResult.isNotEmpty ? statsResult.first : [0.0, 0, 0.0];
 
-    // Sales by category
-    final salesByCategoryResult = await session.db.unsafeQuery('''
-      SELECT
-        COALESCE(c.name, 'Uncategorized') AS category,
-        COALESCE(SUM(oi.price * oi.quantity), 0) AS revenue
-      FROM order_items oi
-      JOIN products p ON oi."productId" = p.id
-      LEFT JOIN categories c ON p."categoryId" = c.id
-      GROUP BY c.name
-      ORDER BY revenue DESC
-    ''');
+      // Sales by day — last 7 days
+      List<List<dynamic>> salesByDayResult;
+      try {
+        salesByDayResult = await session.db.unsafeQuery('''
+          SELECT 
+            TO_CHAR("createdAt"::date, 'YYYY-MM-DD') AS day,
+            COALESCE(SUM(total), 0.0) AS revenue,
+            COUNT(*) AS orders
+          FROM bills
+          WHERE "createdAt" >= NOW() - INTERVAL '7 days'
+          GROUP BY "createdAt"::date
+          ORDER BY "createdAt"::date ASC
+        ''');
+      } catch (e) {
+        session.log('Error in sales by day query: $e', level: LogLevel.error);
+        salesByDayResult = [];
+      }
 
-    // Top 5 selling products
-    final topItemsResult = await session.db.unsafeQuery('''
-      SELECT
-        oi."productName" AS name,
-        SUM(oi.quantity) AS total_qty,
-        SUM(oi.price * oi.quantity) AS total_revenue
-      FROM order_items oi
-      GROUP BY oi."productName"
-      ORDER BY total_qty DESC
-      LIMIT 5
-    ''');
+      // Sales by category
+      List<List<dynamic>> salesByCategoryResult;
+      try {
+        salesByCategoryResult = await session.db.unsafeQuery('''
+          SELECT 
+            COALESCE(c.name, 'Uncategorized') AS category,
+            COALESCE(SUM(oi.price * oi.quantity), 0.0) AS revenue
+          FROM order_items oi
+          JOIN products p ON oi."productId" = p.id
+          LEFT JOIN categories c ON p."categoryId" = c.id
+          GROUP BY COALESCE(c.name, 'Uncategorized')
+          ORDER BY revenue DESC
+        ''');
+      } catch (e) {
+        session.log(
+          'Error in sales by category query: $e',
+          level: LogLevel.error,
+        );
+        salesByCategoryResult = [];
+      }
 
-    final salesByDay = salesByDayResult
-        .map(
-          (r) => {
-            'day': r[0],
-            'revenue': (r[1] as num).toDouble(),
-            'orders': (r[2] as num).toInt(),
-          },
-        )
-        .toList();
+      // Top 5 selling products
+      List<List<dynamic>> topItemsResult;
+      try {
+        topItemsResult = await session.db.unsafeQuery('''
+          SELECT 
+            COALESCE(oi."productName", 'Unknown') AS name,
+            SUM(oi.quantity) AS total_qty,
+            SUM(oi.price * oi.quantity) AS total_revenue
+          FROM order_items oi
+          GROUP BY COALESCE(oi."productName", 'Unknown')
+          ORDER BY total_qty DESC
+          LIMIT 5
+        ''');
+      } catch (e) {
+        session.log('Error in top items query: $e', level: LogLevel.error);
+        topItemsResult = [];
+      }
 
-    final salesByCategory = salesByCategoryResult
-        .map((r) => {'category': r[0], 'revenue': (r[1] as num).toDouble()})
-        .toList();
+      final salesByDay = salesByDayResult.map((r) {
+        return {
+          'day': r[0]?.toString() ?? '',
+          'revenue': _toDouble(r[1]),
+          'orders': _toInt(r[2]),
+        };
+      }).toList();
 
-    final topItems = topItemsResult
-        .map(
-          (r) => {
-            'name': r[0],
-            'total_qty': (r[1] as num).toInt(),
-            'total_revenue': (r[2] as num).toDouble(),
-          },
-        )
-        .toList();
+      final salesByCategory = salesByCategoryResult.map((r) {
+        return {
+          'category': r[0]?.toString() ?? 'Uncategorized',
+          'revenue': _toDouble(r[1]),
+        };
+      }).toList();
 
-    // Encode as JSON string so the client can decode it without a custom class
-    final buffer = StringBuffer('{');
-    buffer.write('"total_revenue":${(stats[0] as num).toDouble()},');
-    buffer.write('"total_orders":${(stats[1] as num).toInt()},');
-    buffer.write('"avg_order_value":${(stats[2] as num).toDouble()},');
-    buffer.write('"sales_by_day":${_encodeList(salesByDay)},');
-    buffer.write('"sales_by_category":${_encodeList(salesByCategory)},');
-    buffer.write('"top_items":${_encodeList(topItems)}');
-    buffer.write('}');
-    return buffer.toString();
+      final topItems = topItemsResult.map((r) {
+        return {
+          'name': r[0]?.toString() ?? 'Unknown',
+          'total_qty': _toInt(r[1]),
+          'total_revenue': _toDouble(r[2]),
+        };
+      }).toList();
+
+      final result = {
+        'total_revenue': _toDouble(stats[0]),
+        'total_orders': _toInt(stats[1]),
+        'avg_order_value': _toDouble(stats[2]),
+        'sales_by_day': salesByDay,
+        'sales_by_category': salesByCategory,
+        'top_items': topItems,
+      };
+
+      return json.encode(result);
+    } catch (e, stackTrace) {
+      session.log(
+        'Error in getSummaryJson: $e',
+        level: LogLevel.error,
+        stackTrace: stackTrace,
+      );
+      rethrow;
+    }
   }
 
-  String _encodeList(List<Map<String, dynamic>> list) {
-    final items = list.map((m) {
-      final pairs = m.entries.map((e) {
-        final val = e.value;
-        if (val is String) return '"${e.key}":"$val"';
-        return '"${e.key}":$val';
-      });
-      return '{${pairs.join(",")}}';
-    });
-    return '[${items.join(",")}]';
+  double _toDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
+
+  int _toInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 }
+
+// Removed the old _encodeList and manual buffer building logic.
+// Removed ReportSummaryData class as it was unused in the endpoint return type.

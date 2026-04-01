@@ -23,11 +23,12 @@ import 'package:pos_server_client/src/protocol/order.dart' as _i8;
 import 'package:pos_server_client/src/protocol/order_item.dart' as _i9;
 import 'package:pos_server_client/src/protocol/product.dart' as _i10;
 import 'package:pos_server_client/src/protocol/product_extra.dart' as _i11;
-import 'package:pos_server_client/src/protocol/subcategory.dart' as _i12;
-import 'package:pos_server_client/src/protocol/restaurant_table.dart' as _i13;
-import 'package:pos_server_client/src/protocol/pos_user.dart' as _i14;
-import 'package:pos_server_client/src/protocol/greetings/greeting.dart' as _i15;
-import 'protocol.dart' as _i16;
+import 'package:pos_server_client/src/protocol/settings.dart' as _i12;
+import 'package:pos_server_client/src/protocol/subcategory.dart' as _i13;
+import 'package:pos_server_client/src/protocol/restaurant_table.dart' as _i14;
+import 'package:pos_server_client/src/protocol/pos_user.dart' as _i15;
+import 'package:pos_server_client/src/protocol/greetings/greeting.dart' as _i16;
+import 'protocol.dart' as _i17;
 
 /// By extending [EmailIdpBaseEndpoint], the email identity provider endpoints
 /// are made available on the server and enable the corresponding sign-in widget
@@ -558,24 +559,70 @@ class EndpointReports extends _i2.EndpointRef {
 }
 
 /// {@category Endpoint}
+class EndpointSettings extends _i2.EndpointRef {
+  EndpointSettings(_i2.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'settings';
+
+  _i3.Future<_i12.Settings> getSettings() =>
+      caller.callServerEndpoint<_i12.Settings>(
+        'settings',
+        'getSettings',
+        {},
+      );
+
+  _i3.Future<_i12.Settings> updateSettings(_i12.Settings settings) =>
+      caller.callServerEndpoint<_i12.Settings>(
+        'settings',
+        'updateSettings',
+        {'settings': settings},
+      );
+
+  _i3.Future<bool> backupDatabase() => caller.callServerEndpoint<bool>(
+    'settings',
+    'backupDatabase',
+    {},
+  );
+
+  _i3.Future<bool> restoreDatabase() => caller.callServerEndpoint<bool>(
+    'settings',
+    'restoreDatabase',
+    {},
+  );
+
+  _i3.Future<bool> purgeOldData(int days) => caller.callServerEndpoint<bool>(
+    'settings',
+    'purgeOldData',
+    {'days': days},
+  );
+
+  _i3.Future<double> getDatabaseSize() => caller.callServerEndpoint<double>(
+    'settings',
+    'getDatabaseSize',
+    {},
+  );
+}
+
+/// {@category Endpoint}
 class EndpointSubcategories extends _i2.EndpointRef {
   EndpointSubcategories(_i2.EndpointCaller caller) : super(caller);
 
   @override
   String get name => 'subcategories';
 
-  _i3.Future<List<_i12.Subcategory>> getAll() =>
-      caller.callServerEndpoint<List<_i12.Subcategory>>(
+  _i3.Future<List<_i13.Subcategory>> getAll() =>
+      caller.callServerEndpoint<List<_i13.Subcategory>>(
         'subcategories',
         'getAll',
         {},
       );
 
-  _i3.Future<_i12.Subcategory> create(
+  _i3.Future<_i13.Subcategory> create(
     int categoryId,
     String name,
     int sortOrder,
-  ) => caller.callServerEndpoint<_i12.Subcategory>(
+  ) => caller.callServerEndpoint<_i13.Subcategory>(
     'subcategories',
     'create',
     {
@@ -585,12 +632,12 @@ class EndpointSubcategories extends _i2.EndpointRef {
     },
   );
 
-  _i3.Future<_i12.Subcategory> update(
+  _i3.Future<_i13.Subcategory> update(
     int id,
     int categoryId,
     String name,
     int sortOrder,
-  ) => caller.callServerEndpoint<_i12.Subcategory>(
+  ) => caller.callServerEndpoint<_i13.Subcategory>(
     'subcategories',
     'update',
     {
@@ -615,26 +662,26 @@ class EndpointTables extends _i2.EndpointRef {
   @override
   String get name => 'tables';
 
-  _i3.Future<List<_i13.RestaurantTable>> getAll() =>
-      caller.callServerEndpoint<List<_i13.RestaurantTable>>(
+  _i3.Future<List<_i14.RestaurantTable>> getAll() =>
+      caller.callServerEndpoint<List<_i14.RestaurantTable>>(
         'tables',
         'getAll',
         {},
       );
 
-  _i3.Future<_i13.RestaurantTable> create(String tableNumber) =>
-      caller.callServerEndpoint<_i13.RestaurantTable>(
+  _i3.Future<_i14.RestaurantTable> create(String tableNumber) =>
+      caller.callServerEndpoint<_i14.RestaurantTable>(
         'tables',
         'create',
         {'tableNumber': tableNumber},
       );
 
-  _i3.Future<_i13.RestaurantTable> update(
+  _i3.Future<_i14.RestaurantTable> update(
     int id,
     String status,
     String? orderCode,
     int guestCount,
-  ) => caller.callServerEndpoint<_i13.RestaurantTable>(
+  ) => caller.callServerEndpoint<_i14.RestaurantTable>(
     'tables',
     'update',
     {
@@ -653,24 +700,24 @@ class EndpointUsers extends _i2.EndpointRef {
   @override
   String get name => 'users';
 
-  _i3.Future<List<_i14.PosUser>> getAll() =>
-      caller.callServerEndpoint<List<_i14.PosUser>>(
+  _i3.Future<List<_i15.PosUser>> getAll() =>
+      caller.callServerEndpoint<List<_i15.PosUser>>(
         'users',
         'getAll',
         {},
       );
 
-  _i3.Future<_i14.PosUser> create(_i14.PosUser user) =>
-      caller.callServerEndpoint<_i14.PosUser>(
+  _i3.Future<_i15.PosUser> create(_i15.PosUser user) =>
+      caller.callServerEndpoint<_i15.PosUser>(
         'users',
         'create',
         {'user': user},
       );
 
-  _i3.Future<_i14.PosUser> update(
+  _i3.Future<_i15.PosUser> update(
     int id,
-    _i14.PosUser user,
-  ) => caller.callServerEndpoint<_i14.PosUser>(
+    _i15.PosUser user,
+  ) => caller.callServerEndpoint<_i15.PosUser>(
     'users',
     'update',
     {
@@ -685,11 +732,11 @@ class EndpointUsers extends _i2.EndpointRef {
     {'id': id},
   );
 
-  _i3.Future<_i14.PosUser?> login(
+  _i3.Future<_i15.PosUser?> login(
     String role,
     String? username,
     String? pin,
-  ) => caller.callServerEndpoint<_i14.PosUser?>(
+  ) => caller.callServerEndpoint<_i15.PosUser?>(
     'users',
     'login',
     {
@@ -710,8 +757,8 @@ class EndpointGreeting extends _i2.EndpointRef {
   String get name => 'greeting';
 
   /// Returns a personalized greeting message: "Hello {name}".
-  _i3.Future<_i15.Greeting> hello(String name) =>
-      caller.callServerEndpoint<_i15.Greeting>(
+  _i3.Future<_i16.Greeting> hello(String name) =>
+      caller.callServerEndpoint<_i16.Greeting>(
         'greeting',
         'hello',
         {'name': name},
@@ -749,7 +796,7 @@ class Client extends _i2.ServerpodClientShared {
     bool? disconnectStreamsOnLostInternetConnection,
   }) : super(
          host,
-         _i16.Protocol(),
+         _i17.Protocol(),
          securityContext: securityContext,
          streamingConnectionTimeout: streamingConnectionTimeout,
          connectionTimeout: connectionTimeout,
@@ -766,6 +813,7 @@ class Client extends _i2.ServerpodClientShared {
     orders = EndpointOrders(this);
     products = EndpointProducts(this);
     reports = EndpointReports(this);
+    settings = EndpointSettings(this);
     subcategories = EndpointSubcategories(this);
     tables = EndpointTables(this);
     users = EndpointUsers(this);
@@ -789,6 +837,8 @@ class Client extends _i2.ServerpodClientShared {
 
   late final EndpointReports reports;
 
+  late final EndpointSettings settings;
+
   late final EndpointSubcategories subcategories;
 
   late final EndpointTables tables;
@@ -809,6 +859,7 @@ class Client extends _i2.ServerpodClientShared {
     'orders': orders,
     'products': products,
     'reports': reports,
+    'settings': settings,
     'subcategories': subcategories,
     'tables': tables,
     'users': users,

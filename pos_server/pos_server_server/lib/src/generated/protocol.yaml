@@ -37,6 +37,13 @@ products:
   - deleteExtra:
 reports:
   - getSummaryJson:
+settings:
+  - getSettings:
+  - updateSettings:
+  - backupDatabase:
+  - restoreDatabase:
+  - purgeOldData:
+  - getDatabaseSize:
 subcategories:
   - getAll:
   - create:

@@ -57,8 +57,7 @@ class OrdersEndpoint extends Endpoint {
     String? statusFilter,
     String? stationFilter,
   }) async {
-    final statusList =
-        statusFilter?.split(',').map((s) => s.trim()).toList();
+    final statusList = statusFilter?.split(',').map((s) => s.trim()).toList();
 
     var orders = await PosOrder.db.find(
       session,
@@ -150,6 +149,19 @@ class OrdersEndpoint extends Endpoint {
               status: 'Occupied',
               orderCode: orderCode,
               updatedAt: DateTime.now(),
+            ),
+            transaction: txSession,
+          );
+        } else {
+          // If table doesn't exist, create it automatically
+          await RestaurantTable.db.insertRow(
+            session,
+            RestaurantTable(
+              tableNumber: tableNo,
+              status: 'Occupied',
+              orderCode: orderCode,
+              updatedAt: DateTime.now(),
+              guestCount: 0,
             ),
             transaction: txSession,
           );
@@ -337,7 +349,41 @@ class OrdersEndpoint extends Endpoint {
         );
       }
 
+      // Mark new table as occupied if dine-in
+      if (newOrderType == 'Dine-In') {
+        final tables = await RestaurantTable.db.find(
+          session,
+          where: (t) => t.tableNumber.equals(newTableNo),
+          limit: 1,
+          transaction: txSession,
+        );
+        if (tables.isNotEmpty) {
+          await RestaurantTable.db.updateRow(
+            session,
+            tables.first.copyWith(
+              status: 'Occupied',
+              orderCode: orderCode,
+              updatedAt: now,
+            ),
+            transaction: txSession,
+          );
+        } else {
+          await RestaurantTable.db.insertRow(
+            session,
+            RestaurantTable(
+              tableNumber: newTableNo,
+              status: 'Occupied',
+              orderCode: orderCode,
+              updatedAt: now,
+              guestCount: 0,
+            ),
+            transaction: txSession,
+          );
+        }
+      }
+
       await EventService.broadcast(session, 'order_updated');
+      await EventService.broadcast(session, 'table_updated');
       return newOrder.id!;
     });
   }

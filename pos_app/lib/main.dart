@@ -9,14 +9,28 @@ late Client client;
 /// Initialize or re-initialize the Serverpod client
 Future<void> initClient() async {
   final prefs = await SharedPreferences.getInstance();
-  final serverIp = prefs.getString('server_ip') ?? '192.168.1.126';
+  final serverIp = prefs.getString('server_ip') ?? 'localhost';
 
-  client = Client('http://$serverIp:8080/')
-    ..connectivityMonitor = FlutterConnectivityMonitor();
+  // Normalize 'localhost' for mobile/emulator access if needed
+  String baseUrl;
+  if (serverIp.toLowerCase() == 'localhost' || serverIp == '127.0.0.1') {
+    baseUrl = 'http://localhost:8080/';
+  } else {
+    baseUrl = 'http://$serverIp:8080/';
+  }
+
+  client = Client(baseUrl)..connectivityMonitor = FlutterConnectivityMonitor();
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Reset IP to localhost for this session if it's set to the old hardcoded IP
+  final prefs = await SharedPreferences.getInstance();
+  final currentIp = prefs.getString('server_ip');
+  if (currentIp == '192.168.1.136') {
+    await prefs.setString('server_ip', 'localhost');
+  }
 
   await initClient();
 

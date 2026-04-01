@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'main.dart';
 import 'waiter/waiter_shell.dart';
 import 'admin/admin_dashboard_screen.dart';
@@ -51,14 +52,122 @@ class _LoginScreenState extends State<LoginScreen>
     },
   ];
 
+  void _showServerSetup() {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 450, maxHeight: 500),
+          child: Container(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Server Setup',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Enter the backend IP address to connect to the POS system.',
+                  style: TextStyle(color: Colors.black54),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Current Server: http://${_ipController.text}:8080/',
+                  style: const TextStyle(fontSize: 12, color: Colors.blue),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Backend IP Address',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                _buildIpField(),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final prefs = await SharedPreferences.getInstance();
+                      final newIp = _ipController.text.trim();
+                      if (newIp.isNotEmpty) {
+                        await prefs.setString('server_ip', newIp);
+                        await initClient();
+                        if (!context.mounted) return;
+                        Navigator.of(context).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Server IP updated successfully'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0F172A),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Connect to Server',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  final TextEditingController _ipController = TextEditingController();
+
+  Widget _buildIpField() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: TextField(
+        controller: _ipController,
+        style: const TextStyle(color: Color(0xFF0F172A)),
+        decoration: const InputDecoration(
+          hintText: 'e.g. localhost',
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
+    _loadIp();
     _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 400),
       vsync: this,
-      duration: const Duration(milliseconds: 600),
     );
     _onRoleSelected('Admin');
+  }
+
+  Future<void> _loadIp() async {
+    final prefs = await SharedPreferences.getInstance();
+    _ipController.text = prefs.getString('server_ip') ?? 'localhost';
   }
 
   void _onRoleSelected(String role) {
@@ -86,6 +195,7 @@ class _LoginScreenState extends State<LoginScreen>
   void dispose() {
     usernameController.dispose();
     pinController.dispose();
+    _ipController.dispose();
     _fadeController.dispose();
     super.dispose();
   }
@@ -157,7 +267,7 @@ class _LoginScreenState extends State<LoginScreen>
       if (!mounted) return;
       setState(() {
         isLoading = false;
-        errorMessage = 'Connection failed. Check server IP in Settings.';
+        errorMessage = 'Connection failed: $e\nCheck server IP in Settings.';
       });
     }
   }
@@ -279,11 +389,39 @@ class _LoginScreenState extends State<LoginScreen>
 
                               if (errorMessage != null) ...[
                                 const SizedBox(height: 20),
-                                Text(
-                                  errorMessage!,
-                                  style: const TextStyle(
-                                    color: Colors.redAccent,
-                                    fontSize: 13,
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withValues(alpha: 0.05),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        errorMessage!,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          color: Colors.redAccent,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      TextButton.icon(
+                                        onPressed: _showServerSetup,
+                                        icon: const Icon(
+                                          Icons.dns_outlined,
+                                          size: 16,
+                                        ),
+                                        label: const Text(
+                                          'Configure Server IP',
+                                        ),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Colors.redAccent,
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -349,16 +487,42 @@ class _LoginScreenState extends State<LoginScreen>
           Positioned(
             bottom: 24,
             right: 24,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.help_outline,
-                color: Color(0xFF0F172A),
-                size: 24,
+            child: GestureDetector(
+              onTap: _showServerSetup,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.dns_outlined,
+                      color: Color(0xFF0F172A),
+                      size: 20,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Server Setup',
+                      style: TextStyle(
+                        color: Color(0xFF0F172A),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

@@ -21,7 +21,9 @@ class ProductsEndpoint extends Endpoint {
     for (final e in extras) {
       extrasByProduct.putIfAbsent(e.productId, () => []).add(e);
     }
-    return products.map((p) => p.copyWith(extras: extrasByProduct[p.id!] ?? [])).toList();
+    return products
+        .map((p) => p.copyWith(extras: extrasByProduct[p.id!] ?? []))
+        .toList();
   }
 
   Future<List<Product>> getPopular(Session session, String? orderType) async {
@@ -33,19 +35,28 @@ class ProductsEndpoint extends Endpoint {
       JOIN pos_orders o ON oi."orderId" = o.id
       JOIN products p ON oi."productId" = p.id
       WHERE (p."isDeleted" = FALSE OR p."isDeleted" IS NULL)
+      ${orderType != null ? 'AND (p.type = \$1 OR p.type = \'Both\' OR p.type IS NULL)' : ''}
       ${orderType != null ? 'AND o."orderType" = \$1' : ''}
       GROUP BY p.id
       ORDER BY SUM(oi.quantity) DESC
       LIMIT 10
       ''',
-      parameters: orderType != null ? QueryParameters.positional([orderType]) : null,
+      parameters: orderType != null
+          ? QueryParameters.positional([orderType])
+          : null,
     );
 
     final ids = result.map((r) => r[0] as int).toList();
     if (ids.isEmpty) {
       return await Product.db.find(
         session,
-        where: (t) => t.isDeleted.equals(false),
+        where: (t) =>
+            t.isDeleted.equals(false) &
+            ((orderType != null)
+                ? (t.type.equals(orderType) |
+                      t.type.equals('Both') |
+                      t.type.equals(null))
+                : Constant.bool(true)),
         limit: 10,
       );
     }
@@ -62,7 +73,9 @@ class ProductsEndpoint extends Endpoint {
     for (final e in extras) {
       extrasByProduct.putIfAbsent(e.productId, () => []).add(e);
     }
-    return products.map((p) => p.copyWith(extras: extrasByProduct[p.id!] ?? [])).toList();
+    return products
+        .map((p) => p.copyWith(extras: extrasByProduct[p.id!] ?? []))
+        .toList();
   }
 
   Future<Product> create(Session session, Product product) async {
@@ -94,14 +107,22 @@ class ProductsEndpoint extends Endpoint {
       // Soft delete
       await Product.db.updateRow(session, existing.copyWith(isDeleted: true));
     } else {
-      await ProductExtra.db.deleteWhere(session, where: (t) => t.productId.equals(id));
+      await ProductExtra.db.deleteWhere(
+        session,
+        where: (t) => t.productId.equals(id),
+      );
       await Product.db.deleteRow(session, existing);
     }
     await EventService.broadcast(session, 'product_updated');
     return true;
   }
 
-  Future<ProductExtra> addExtra(Session session, int productId, String name, double price) async {
+  Future<ProductExtra> addExtra(
+    Session session,
+    int productId,
+    String name,
+    double price,
+  ) async {
     final extra = ProductExtra(productId: productId, name: name, price: price);
     final result = await ProductExtra.db.insertRow(session, extra);
     await EventService.broadcast(session, 'product_updated');
