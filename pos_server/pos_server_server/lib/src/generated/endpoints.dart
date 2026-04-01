@@ -1208,6 +1208,62 @@ class Endpoints extends _i1.EndpointDispatch {
                 params['guestCount'],
               ),
         ),
+        'mergeTables': _i1.MethodConnector(
+          name: 'mergeTables',
+          params: {
+            'sourceTableNumber': _i1.ParameterDescription(
+              name: 'sourceTableNumber',
+              type: _i1.getType<String>(),
+              nullable: false,
+            ),
+            'targetTableNumber': _i1.ParameterDescription(
+              name: 'targetTableNumber',
+              type: _i1.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _i1.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['tables'] as _i12.TablesEndpoint).mergeTables(
+                    session,
+                    params['sourceTableNumber'],
+                    params['targetTableNumber'],
+                  ),
+        ),
+        'moveItemsToTable': _i1.MethodConnector(
+          name: 'moveItemsToTable',
+          params: {
+            'itemIds': _i1.ParameterDescription(
+              name: 'itemIds',
+              type: _i1.getType<List<int>>(),
+              nullable: false,
+            ),
+            'quantities': _i1.ParameterDescription(
+              name: 'quantities',
+              type: _i1.getType<List<int>>(),
+              nullable: false,
+            ),
+            'targetTableNumber': _i1.ParameterDescription(
+              name: 'targetTableNumber',
+              type: _i1.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _i1.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['tables'] as _i12.TablesEndpoint).moveItemsToTable(
+                    session,
+                    params['itemIds'],
+                    params['quantities'],
+                    params['targetTableNumber'],
+                  ),
+        ),
       },
     );
     connectors['users'] = _i1.EndpointConnector(

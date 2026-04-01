@@ -66,20 +66,19 @@ class _NewOrderViewState extends State<NewOrderView> {
     }
   }
 
-  void _addToCart(Product product) {
+  void _addToCart(Product p) {
     setState(() {
-      final existingIndex = cart.indexWhere(
-        (item) => item.product.id == product.id,
-      );
-      if (existingIndex != -1) {
-        cart[existingIndex].quantity++;
-      } else {
-        cart.add(CartItem(product: product, quantity: 1));
-      }
+      cart.add(CartItem(product: p, quantity: 1));
     });
   }
 
-  void _removeFromCart(int index) {
+  void _incrementCartItem(int index) {
+    setState(() {
+      cart[index].quantity++;
+    });
+  }
+
+  void _decrementCartItem(int index) {
     setState(() {
       if (cart[index].quantity > 1) {
         cart[index].quantity--;
@@ -94,6 +93,12 @@ class _NewOrderViewState extends State<NewOrderView> {
   }
 
   double get subtotal => cart.fold(0, (sum, item) => sum + item.total);
+
+  int _getCartItemCount(Product p) {
+    return cart
+        .where((item) => item.product.id == p.id)
+        .fold(0, (sum, item) => sum + item.quantity);
+  }
 
   Future<void> _sendOrder() async {
     if (cart.isEmpty) return;
@@ -124,7 +129,7 @@ class _NewOrderViewState extends State<NewOrderView> {
         subtotal,
         orderType,
         orderType == 'Dine-In' ? _tableController.text : null,
-        'ORD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+        null, // Server will generate order code automatically
         'Current Waiter', // In real app, get from auth
         orderItems,
       );
@@ -411,13 +416,18 @@ class _NewOrderViewState extends State<NewOrderView> {
   }
 
   Widget _buildPopularCard(Product p) {
+    final count = _getCartItemCount(p);
+
     return Container(
       width: 200,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey[100]!),
+        border: Border.all(
+          color: count > 0 ? const Color(0xFF0F172A) : Colors.grey[100]!,
+          width: count > 0 ? 2 : 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -436,6 +446,25 @@ class _NewOrderViewState extends State<NewOrderView> {
                   style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
                 ),
               ),
+              if (count > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F172A),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 12),
@@ -501,22 +530,57 @@ class _NewOrderViewState extends State<NewOrderView> {
   }
 
   Widget _buildProductCard(Product p) {
+    final count = _getCartItemCount(p);
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey[100]!),
+        border: Border.all(
+          color: count > 0 ? const Color(0xFF0F172A) : Colors.grey[100]!,
+          width: count > 0 ? 2 : 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: Text(
-              p.name,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    p.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (count > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '$count',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
           const SizedBox(height: 8),
@@ -766,7 +830,7 @@ class _NewOrderViewState extends State<NewOrderView> {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => _removeFromCart(index),
+            onPressed: () => _decrementCartItem(index),
             icon: const Icon(Icons.remove, size: 16),
             padding: const EdgeInsets.symmetric(horizontal: 8),
             constraints: const BoxConstraints(),
@@ -776,7 +840,7 @@ class _NewOrderViewState extends State<NewOrderView> {
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           IconButton(
-            onPressed: () => setState(() => cart[index].quantity++),
+            onPressed: () => _incrementCartItem(index),
             icon: const Icon(Icons.add, size: 16),
             padding: const EdgeInsets.symmetric(horizontal: 8),
             constraints: const BoxConstraints(),

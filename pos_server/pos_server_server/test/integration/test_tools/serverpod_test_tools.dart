@@ -1827,6 +1827,78 @@ class _TablesEndpoint {
       }
     });
   }
+
+  _i3.Future<void> mergeTables(
+    _i1.TestSessionBuilder sessionBuilder,
+    String sourceTableNumber,
+    String targetTableNumber,
+  ) async {
+    return _i1.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _i1.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'tables',
+            method: 'mergeTables',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'tables',
+          methodName: 'mergeTables',
+          parameters: _i1.testObjectToJson({
+            'sourceTableNumber': sourceTableNumber,
+            'targetTableNumber': targetTableNumber,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _i3.Future<void>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _i3.Future<void> moveItemsToTable(
+    _i1.TestSessionBuilder sessionBuilder,
+    List<int> itemIds,
+    List<int> quantities,
+    String targetTableNumber,
+  ) async {
+    return _i1.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _i1.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'tables',
+            method: 'moveItemsToTable',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'tables',
+          methodName: 'moveItemsToTable',
+          parameters: _i1.testObjectToJson({
+            'itemIds': itemIds,
+            'quantities': quantities,
+            'targetTableNumber': targetTableNumber,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _i3.Future<void>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
 }
 
 class _UsersEndpoint {

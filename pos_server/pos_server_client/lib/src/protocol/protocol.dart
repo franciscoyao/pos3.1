@@ -224,6 +224,9 @@ class Protocol extends _i1.SerializationManager {
               .toList()
           as T;
     }
+    if (t == List<int>) {
+      return (data as List).map((e) => deserialize<int>(e)).toList() as T;
+    }
     if (t == List<_i21.PosUser>) {
       return (data as List).map((e) => deserialize<_i21.PosUser>(e)).toList()
           as T;

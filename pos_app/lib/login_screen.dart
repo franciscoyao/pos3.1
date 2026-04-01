@@ -3,9 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'main.dart';
 import 'waiter/waiter_shell.dart';
 import 'admin/admin_dashboard_screen.dart';
-import 'kitchen/kitchen_screen.dart';
-import 'bar/bar_screen.dart';
 import 'kiosk/kiosk_screen.dart';
+
+import 'kitchen/kitchen_bar_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -245,12 +245,16 @@ class _LoginScreenState extends State<LoginScreen>
         } else if (selectedRole == 'Kitchen') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const KitchenScreen()),
+            MaterialPageRoute(
+              builder: (_) => const KitchenBarScreen(station: 'Kitchen'),
+            ),
           );
         } else if (selectedRole == 'Bar') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const BarScreen()),
+            MaterialPageRoute(
+              builder: (_) => const KitchenBarScreen(station: 'Bar'),
+            ),
           );
         } else if (selectedRole == 'Kiosk') {
           Navigator.pushReplacement(

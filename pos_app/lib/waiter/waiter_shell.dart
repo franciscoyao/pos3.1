@@ -193,9 +193,14 @@ class _WaiterShellState extends State<WaiterShell> {
               'orderType': 'Dine-In',
             });
           },
+          onCheckout: (tableNo) {
+            _switchView('Checkout', {'tableNo': tableNo});
+          },
         );
       case 'Checkout':
-        return const CheckoutView();
+        return CheckoutView(
+          initialTableNo: _viewParams?['tableNo'],
+        );
       case 'Orders':
         return const OrderHistoryView();
       case 'Bills':

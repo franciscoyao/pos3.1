@@ -691,6 +691,32 @@ class EndpointTables extends _i2.EndpointRef {
       'guestCount': guestCount,
     },
   );
+
+  _i3.Future<void> mergeTables(
+    String sourceTableNumber,
+    String targetTableNumber,
+  ) => caller.callServerEndpoint<void>(
+    'tables',
+    'mergeTables',
+    {
+      'sourceTableNumber': sourceTableNumber,
+      'targetTableNumber': targetTableNumber,
+    },
+  );
+
+  _i3.Future<void> moveItemsToTable(
+    List<int> itemIds,
+    List<int> quantities,
+    String targetTableNumber,
+  ) => caller.callServerEndpoint<void>(
+    'tables',
+    'moveItemsToTable',
+    {
+      'itemIds': itemIds,
+      'quantities': quantities,
+      'targetTableNumber': targetTableNumber,
+    },
+  );
 }
 
 /// {@category Endpoint}

@@ -53,6 +53,8 @@ tables:
   - getAll:
   - create:
   - update:
+  - mergeTables:
+  - moveItemsToTable:
 users:
   - getAll:
   - create:

@@ -98,6 +98,11 @@ class OrdersEndpoint extends Endpoint {
     List<OrderItem> items,
   ) async {
     return await session.db.transaction<PosOrder>((txSession) async {
+      // Auto-generate order code if not provided
+      final finalOrderCode =
+          orderCode ??
+          'ORD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+
       // Check table not already occupied for dine-in
       if (orderType == 'Dine-In' && tableNo != null) {
         final tables = await RestaurantTable.db.find(
@@ -116,7 +121,7 @@ class OrdersEndpoint extends Endpoint {
         total: total,
         orderType: orderType,
         tableNo: tableNo,
-        orderCode: orderCode,
+        orderCode: finalOrderCode,
         waiterName: waiterName,
         status: 'Pending',
         createdAt: now,
@@ -147,7 +152,7 @@ class OrdersEndpoint extends Endpoint {
             session,
             tables.first.copyWith(
               status: 'Occupied',
-              orderCode: orderCode,
+              orderCode: finalOrderCode,
               updatedAt: DateTime.now(),
             ),
             transaction: txSession,
@@ -159,7 +164,7 @@ class OrdersEndpoint extends Endpoint {
             RestaurantTable(
               tableNumber: tableNo,
               status: 'Occupied',
-              orderCode: orderCode,
+              orderCode: finalOrderCode,
               updatedAt: DateTime.now(),
               guestCount: 0,
             ),
