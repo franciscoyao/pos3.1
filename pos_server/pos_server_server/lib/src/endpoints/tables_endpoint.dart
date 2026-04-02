@@ -152,215 +152,174 @@ class TablesEndpoint extends Endpoint {
     await EventService.broadcast(session, 'order_updated');
   }
 
-  Future<void> moveItemsToTable(
+  Future<bool> moveItemsToTable(
     Session session,
     List<int> itemIds,
     List<int> quantities,
-    String targetTableNumber,
+    String targetTableNo,
   ) async {
-    if (itemIds.length != quantities.length) {
-      throw Exception('Item IDs and quantities length mismatch');
-    }
+    return await session.db.transaction<bool>((txSession) async {
+      final now = DateTime.now();
 
-    await session.db.transaction((transaction) async {
-      // 1. Find target order on target table (if exists, or create new)
-      var targetOrder = await PosOrder.db.findFirstRow(
+      // 1. Find or create target table
+      final targetTables = await RestaurantTable.db.find(
         session,
-        where: (t) =>
-            t.tableNo.equals(targetTableNumber) &
-            t.status.inSet({'Pending', 'In Progress'}),
-        transaction: transaction,
+        where: (t) => t.tableNumber.equals(targetTableNo),
+        limit: 1,
+        transaction: txSession,
       );
 
-      // Track source order IDs to update their totals and cleanup
-      final sourceOrderIds = <int>{};
+      RestaurantTable targetTable;
+      String orderCode;
 
-      // 2. Process each item move
-      double movedTotal = 0;
-      for (int i = 0; i < itemIds.length; i++) {
-        final itemId = itemIds[i];
-        final quantityToMove = quantities[i];
-
-        final item = await OrderItem.db.findById(
-          session,
-          itemId,
-          transaction: transaction,
-        );
-        if (item == null) continue;
-
-        sourceOrderIds.add(item.orderId);
-
-        // If target order doesn't exist yet, create it using the first item's source order info
-        if (targetOrder == null) {
-          final sourceOrder = await PosOrder.db.findById(
+      if (targetTables.isNotEmpty && targetTables.first.status == 'Occupied') {
+        targetTable = targetTables.first;
+        orderCode = targetTable.orderCode!;
+      } else {
+        orderCode = 'ORD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+        if (targetTables.isNotEmpty) {
+          targetTable = await RestaurantTable.db.updateRow(
             session,
-            item.orderId,
-            transaction: transaction,
-          );
-          targetOrder = await PosOrder.db.insertRow(
-            session,
-            PosOrder(
-              tableNo: targetTableNumber,
-              status: 'Pending',
-              orderType: sourceOrder?.orderType ?? 'Dine-In',
-              waiterName: sourceOrder?.waiterName ?? 'System',
-              total: 0,
-              createdAt: DateTime.now(),
-              updatedAt: DateTime.now(),
-              orderCode: 'ORD-S-${DateTime.now().millisecondsSinceEpoch}',
+            targetTables.first.copyWith(
+              status: 'Occupied',
+              orderCode: orderCode,
+              updatedAt: now,
             ),
-            transaction: transaction,
+            transaction: txSession,
+          );
+        } else {
+          targetTable = await RestaurantTable.db.insertRow(
+            session,
+            RestaurantTable(
+              tableNumber: targetTableNo,
+              status: 'Occupied',
+              orderCode: orderCode,
+              updatedAt: now,
+              guestCount: 0,
+            ),
+            transaction: txSession,
           );
         }
+      }
 
-        if (quantityToMove >= item.quantity) {
-          // Move the entire item
-          movedTotal += item.totalPrice;
+      // 2. Find or create the active order for the target table
+      final activeOrders = await PosOrder.db.find(
+        session,
+        where: (t) => t.orderCode.equals(orderCode) & t.status.notEquals('Completed') & t.status.notEquals('Cancelled'),
+        limit: 1,
+        transaction: txSession,
+      );
+
+      PosOrder targetOrder;
+      if (activeOrders.isNotEmpty) {
+        targetOrder = activeOrders.first;
+      } else {
+        targetOrder = await PosOrder.db.insertRow(
+          session,
+          PosOrder(
+            orderCode: orderCode,
+            orderType: 'Dine-In',
+            tableNo: targetTableNo,
+            status: 'Pending',
+            total: 0,
+            subtotal: 0,
+            createdAt: now,
+            updatedAt: now,
+          ),
+          transaction: txSession,
+        );
+      }
+
+      // 3. Move items and update totals
+      double totalMoved = 0;
+      for (int i = 0; i < itemIds.length; i++) {
+        final itemId = itemIds[i];
+        final qtyToMove = quantities[i];
+
+        final existing = await OrderItem.db.findById(session, itemId, transaction: txSession);
+        if (existing == null) continue;
+
+        if (existing.quantity <= qtyToMove) {
+          // Move full item
+          totalMoved += existing.totalPrice;
           await OrderItem.db.updateRow(
             session,
-            item.copyWith(orderId: targetOrder.id!),
-            transaction: transaction,
+            existing.copyWith(orderId: targetOrder.id!),
+            transaction: txSession,
           );
-        } else if (quantityToMove > 0) {
-          // Split the item: reduce source quantity, create new target item
-          final movedItemPrice = item.price * quantityToMove;
-          movedTotal += movedItemPrice;
+        } else {
+          // Split item quantity
+          final pricePerUnit = existing.price;
+          final movedPrice = pricePerUnit * qtyToMove;
+          totalMoved += movedPrice;
 
           // Update source item
+          final remainingQty = existing.quantity - qtyToMove;
           await OrderItem.db.updateRow(
             session,
-            item.copyWith(
-              quantity: item.quantity - quantityToMove,
-              totalPrice: item.totalPrice - movedItemPrice,
+            existing.copyWith(
+              quantity: remainingQty,
+              totalPrice: remainingQty * pricePerUnit,
             ),
-            transaction: transaction,
+            transaction: txSession,
           );
 
-          // Create target item
+          // Create new item in target order
           await OrderItem.db.insertRow(
             session,
             OrderItem(
               orderId: targetOrder.id!,
-              productId: item.productId,
-              productName: item.productName,
-              productStation: item.productStation,
-              quantity: quantityToMove,
-              price: item.price,
-              totalPrice: movedItemPrice,
-              notes: item.notes,
-              extras: item.extras,
+              productId: existing.productId,
+              productName: existing.productName,
+              productStation: existing.productStation,
+              quantity: qtyToMove,
+              price: pricePerUnit,
+              totalPrice: movedPrice,
+              notes: existing.notes,
+              extras: existing.extras,
             ),
-            transaction: transaction,
+            transaction: txSession,
           );
         }
       }
 
-      // 3. Update target order total
-      if (targetOrder != null) {
+      // 4. Update order totals
+      // Update target
+      await PosOrder.db.updateRow(
+        session,
+        targetOrder.copyWith(
+          total: targetOrder.total + totalMoved,
+          subtotal: targetOrder.subtotal + totalMoved,
+          updatedAt: now,
+        ),
+        transaction: txSession,
+      );
+
+      // Update source(s) - for simplicity, we find the orders affected
+      final sourceOrderIds = (await OrderItem.db.find(session, where: (t) => t.id.inSet(itemIds.toSet()))).map((e) => e.orderId).toSet();
+      // Actually we already have the source items, but they might belong to different orders if a table has multiple.
+      // Re-calculating all affected source orders is safer.
+      for (final sId in sourceOrderIds) {
+        final sOrder = await PosOrder.db.findById(session, sId, transaction: txSession);
+        if (sOrder == null) continue;
+        
+        final sItems = await OrderItem.db.find(session, where: (t) => t.orderId.equals(sId), transaction: txSession);
+        final newTotal = sItems.fold(0.0, (sum, item) => sum + item.totalPrice);
+        
         await PosOrder.db.updateRow(
           session,
-          targetOrder.copyWith(
-            total: targetOrder.total + movedTotal,
-            updatedAt: DateTime.now(),
+          sOrder.copyWith(
+            total: newTotal,
+            subtotal: newTotal,
+            updatedAt: now,
           ),
-          transaction: transaction,
+          transaction: txSession,
         );
       }
 
-      // 4. Update each source order and handle cleanup
-      for (final sOrderId in sourceOrderIds) {
-        final sOrder = await PosOrder.db.findById(
-          session,
-          sOrderId,
-          transaction: transaction,
-        );
-        if (sOrder == null) continue;
-
-        // Recalculate total for source order
-        final remainingItems = await OrderItem.db.find(
-          session,
-          where: (t) => t.orderId.equals(sOrderId),
-          transaction: transaction,
-        );
-        final newTotal = remainingItems.fold(
-          0.0,
-          (sum, it) => sum + it.totalPrice,
-        );
-
-        if (remainingItems.isEmpty) {
-          // Delete empty order
-          await PosOrder.db.deleteRow(
-            session,
-            sOrder,
-            transaction: transaction,
-          );
-
-          // Check if table has no more orders
-          final tableNo = sOrder.tableNo;
-          if (tableNo != null) {
-            final otherOrdersCount = await PosOrder.db.count(
-              session,
-              where: (t) =>
-                  t.tableNo.equals(tableNo) &
-                  t.status.inSet({'Pending', 'In Progress'}),
-              transaction: transaction,
-            );
-            if (otherOrdersCount == 0) {
-              final table = await RestaurantTable.db.findFirstRow(
-                session,
-                where: (t) => t.tableNumber.equals(tableNo),
-                transaction: transaction,
-              );
-              if (table != null) {
-                await RestaurantTable.db.updateRow(
-                  session,
-                  table.copyWith(
-                    status: 'Available',
-                    updatedAt: DateTime.now(),
-                  ),
-                  transaction: transaction,
-                );
-              }
-            }
-          }
-        } else {
-          // Update order total
-          await PosOrder.db.updateRow(
-            session,
-            sOrder.copyWith(total: newTotal, updatedAt: DateTime.now()),
-            transaction: transaction,
-          );
-        }
-      }
-
-      // 5. Update target table status
-      final targetTable = await RestaurantTable.db.findFirstRow(
-        session,
-        where: (t) => t.tableNumber.equals(targetTableNumber),
-        transaction: transaction,
-      );
-      if (targetTable != null) {
-        await RestaurantTable.db.updateRow(
-          session,
-          targetTable.copyWith(status: 'Occupied', updatedAt: DateTime.now()),
-          transaction: transaction,
-        );
-      } else {
-        // User said "insert table" - if table doesn't exist, we create it
-        await RestaurantTable.db.insertRow(
-          session,
-          RestaurantTable(
-            tableNumber: targetTableNumber,
-            status: 'Occupied',
-            guestCount: 0,
-            updatedAt: DateTime.now(),
-          ),
-          transaction: transaction,
-        );
-      }
+      await EventService.broadcast(session, 'order_updated');
+      await EventService.broadcast(session, 'table_updated');
+      return true;
     });
-
-    await EventService.broadcast(session, 'table_updated');
-    await EventService.broadcast(session, 'order_updated');
   }
 }

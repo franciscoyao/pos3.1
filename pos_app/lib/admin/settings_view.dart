@@ -64,8 +64,8 @@ class _SettingsViewState extends State<SettingsView> {
       // 2. Save Global Settings to Serverpod
       if (_settings != null) {
         final updated = _settings!.copyWith(
-          taxRate: double.tryParse(_taxController.text) ?? 10.0,
-          serviceCharge: double.tryParse(_serviceController.text) ?? 5.0,
+          taxRate: double.tryParse(_taxController.text) ?? 0.0,
+          serviceCharge: double.tryParse(_serviceController.text) ?? 0.0,
           currencySymbol: _currencyController.text.trim(),
           orderDelayThreshold: int.tryParse(_delayController.text) ?? 15,
         );
@@ -145,7 +145,7 @@ class _SettingsViewState extends State<SettingsView> {
                 _buildField(
                   label: 'Currency Symbol',
                   controller: _currencyController,
-                  hint: '\$',
+                  hint: '€',
                   width: 150,
                 ),
               ],
@@ -198,14 +198,60 @@ class _SettingsViewState extends State<SettingsView> {
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Reset Transactional Data?'),
+                        content: const Text(
+                          'This will delete all orders, items, and bills, and reset all tables to available. This action cannot be undone.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.red,
+                            ),
+                            child: const Text('Reset Everything'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirm == true) {
+                      try {
+                        setState(() => _isLoading = true);
+                        final success = await client.settings.purgeOldData(0);
+                        if (success) {
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('System cleaned successfully!'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Cleanup failed: $e')),
+                        );
+                      } finally {
+                        if (mounted) setState(() => _isLoading = false);
+                      }
+                    }
+                  },
                   icon: const Icon(
-                    Icons.delete_outline,
+                    Icons.delete_sweep_outlined,
                     size: 20,
                     color: Colors.white,
                   ),
                   label: const Text(
-                    'Purge Data Older Than 90 Days',
+                    'Reset All Orders & Tables',
                     style: TextStyle(color: Colors.white),
                   ),
                   style: ElevatedButton.styleFrom(

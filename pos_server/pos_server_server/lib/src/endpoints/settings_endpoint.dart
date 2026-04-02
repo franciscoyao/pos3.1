@@ -7,9 +7,9 @@ class SettingsEndpoint extends Endpoint {
     if (settings == null) {
       // Create default settings if not exists
       final defaults = Settings(
-        taxRate: 10.0,
-        serviceCharge: 5.0,
-        currencySymbol: '\$',
+        taxRate: 0.0,
+        serviceCharge: 0.0,
+        currencySymbol: '€',
         orderDelayThreshold: 15,
         updatedAt: DateTime.now(),
       );
@@ -47,17 +47,98 @@ class SettingsEndpoint extends Endpoint {
   }
 
   Future<bool> purgeOldData(Session session, int days) async {
-    // Logic to delete old orders/bills
-    final cutoff = DateTime.now().subtract(Duration(days: days));
-    // Implementation would depend on how we define "old data"
-    session.log(
-      'Purging data older than $days days (cutoff: ${cutoff.toIso8601String()})',
-    );
-    return true;
+    try {
+      await session.db.transaction((transaction) async {
+        // 1. Delete transactional data
+        await session.db.unsafeQuery(
+          'DELETE FROM order_items',
+          transaction: transaction,
+        );
+        await session.db.unsafeQuery(
+          'DELETE FROM pos_orders',
+          transaction: transaction,
+        );
+        await session.db.unsafeQuery(
+          'DELETE FROM bills',
+          transaction: transaction,
+        );
+
+        // 2. Delete master data
+        await session.db.unsafeQuery(
+          'DELETE FROM product_extras',
+          transaction: transaction,
+        );
+        await session.db.unsafeQuery(
+          'DELETE FROM products',
+          transaction: transaction,
+        );
+        await session.db.unsafeQuery(
+          'DELETE FROM subcategories',
+          transaction: transaction,
+        );
+        await session.db.unsafeQuery(
+          'DELETE FROM categories',
+          transaction: transaction,
+        );
+        await session.db.unsafeQuery(
+          'DELETE FROM pos_users WHERE "isDefault" = FALSE',
+          transaction: transaction,
+        );
+
+        // 3. Reset tables
+        await session.db.unsafeQuery(
+          "UPDATE restaurant_tables SET status = 'Available', \"orderCode\" = NULL, \"guestCount\" = 0",
+          transaction: transaction,
+        );
+      });
+
+      return true;
+    } catch (e) {
+      session.log('Error purging data: $e', level: LogLevel.error);
+      return false;
+    }
   }
 
   Future<double> getDatabaseSize(Session session) async {
     // For now, return a dummy size (in MB)
     return 2.4;
+  }
+
+  Future<bool> clearAllTransactionalData(Session session) async {
+    try {
+      await session.db.transaction((transaction) async {
+        // 1. Delete all order items
+        await session.db.unsafeQuery(
+          'DELETE FROM order_items',
+          transaction: transaction,
+        );
+
+        // 2. Delete all orders
+        await session.db.unsafeQuery(
+          'DELETE FROM pos_orders',
+          transaction: transaction,
+        );
+
+        // 3. Delete all bills
+        await session.db.unsafeQuery(
+          'DELETE FROM bills',
+          transaction: transaction,
+        );
+
+        // 4. Reset all tables to Available
+        await session.db.unsafeQuery(
+          "UPDATE restaurant_tables SET status = 'Available', \"orderCode\" = NULL, \"guestCount\" = 0",
+          transaction: transaction,
+        );
+      });
+
+      return true;
+    } catch (e) {
+      session.log(
+        'Error clearing transactional data: $e',
+        level: LogLevel.error,
+      );
+      return false;
+    }
   }
 }

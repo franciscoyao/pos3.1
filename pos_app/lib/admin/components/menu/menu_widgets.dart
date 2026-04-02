@@ -51,6 +51,7 @@ class MenuDialogField extends StatelessWidget {
   final bool isNumeric;
   final bool isPIN;
   final String? hint;
+  final String? prefixText;
 
   const MenuDialogField({
     super.key,
@@ -59,6 +60,7 @@ class MenuDialogField extends StatelessWidget {
     this.isNumeric = false,
     this.isPIN = false,
     this.hint,
+    this.prefixText,
   });
 
   @override
@@ -108,6 +110,7 @@ class MenuDialogField extends StatelessWidget {
                 : null,
             decoration: InputDecoration(
               hintText: hint,
+              prefixText: prefixText,
               border: InputBorder.none,
             ),
           ),

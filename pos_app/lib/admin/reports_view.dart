@@ -212,7 +212,7 @@ class _ReportsViewState extends State<ReportsView> {
   }
 
   Widget _buildSummaryCards() {
-    final currencyFormat = NumberFormat.simpleCurrency();
+    final currencyFormat = NumberFormat.simpleCurrency(name: 'EUR');
     final totalRevenue = reportData?['total_revenue'] ?? 0.0;
     final totalOrders = reportData?['total_orders'] ?? 0;
     final avgOrderValue = reportData?['avg_order_value'] ?? 0.0;
@@ -418,7 +418,7 @@ class _ReportsViewState extends State<ReportsView> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildLegendItem('Sales (\$)', Colors.blue),
+              _buildLegendItem('Sales (€)', Colors.blue),
               const SizedBox(width: 24),
               _buildLegendItem('Orders', const Color(0xFF10B981)),
             ],
@@ -533,7 +533,7 @@ class _ReportsViewState extends State<ReportsView> {
 
   Widget _buildTopSellingItems() {
     final List<dynamic> items = reportData?['top_items'] ?? [];
-    final currencyFormat = NumberFormat.simpleCurrency();
+    final currencyFormat = NumberFormat.simpleCurrency(name: 'EUR');
 
     return Container(
       padding: const EdgeInsets.all(32),

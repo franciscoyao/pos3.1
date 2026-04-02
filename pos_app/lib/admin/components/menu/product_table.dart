@@ -91,7 +91,7 @@ class ProductTable extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          '\$${p.price.toStringAsFixed(2)}',
+                          '€${p.price.toStringAsFixed(2)}',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -226,7 +226,7 @@ class ProductTable extends StatelessWidget {
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
-                    DataCell(Text('\$${p.price.toStringAsFixed(2)}')),
+                    DataCell(Text('€${p.price.toStringAsFixed(2)}')),
                     DataCell(
                       Container(
                         padding: const EdgeInsets.symmetric(

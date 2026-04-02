@@ -23,6 +23,7 @@ class _NewOrderViewState extends State<NewOrderView> {
   List<Category> categories = [];
   int? selectedCategoryId;
   bool isLoading = true;
+  StreamSubscription? _subscription;
 
   // Cart State
   final List<CartItem> cart = [];
@@ -33,6 +34,21 @@ class _NewOrderViewState extends State<NewOrderView> {
     orderType = widget.initialOrderType ?? 'Dine-In';
     _tableController.text = widget.initialTableNo ?? '';
     _loadData();
+    _setupWebsocket();
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _setupWebsocket() async {
+    _subscription = posEventStreamController.stream.listen((event) {
+      if (event.eventType == 'product_updated') {
+        _loadData();
+      }
+    });
   }
 
   Future<void> _loadData() async {
@@ -482,7 +498,7 @@ class _NewOrderViewState extends State<NewOrderView> {
             children: [
               Flexible(
                 child: Text(
-                  '\$${p.price.toStringAsFixed(2)}',
+                  '€${p.price.toStringAsFixed(2)}',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -589,7 +605,7 @@ class _NewOrderViewState extends State<NewOrderView> {
             children: [
               Flexible(
                 child: Text(
-                  '\$${p.price.toStringAsFixed(2)}',
+                  '€${p.price.toStringAsFixed(2)}',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
@@ -709,7 +725,7 @@ class _NewOrderViewState extends State<NewOrderView> {
                 controller: priceController,
                 decoration: const InputDecoration(
                   labelText: 'Custom Price',
-                  prefixText: '\$',
+                  prefixText: '€',
                 ),
                 keyboardType: TextInputType.number,
               ),
@@ -788,7 +804,7 @@ class _NewOrderViewState extends State<NewOrderView> {
                 children: [
                   if (item.overridePrice != null)
                     Text(
-                      '\$${item.product.price.toStringAsFixed(2)}',
+                      '€${item.product.price.toStringAsFixed(2)}',
                       style: const TextStyle(
                         fontSize: 10,
                         decoration: TextDecoration.lineThrough,
@@ -796,7 +812,7 @@ class _NewOrderViewState extends State<NewOrderView> {
                       ),
                     ),
                   Text(
-                    '\$${item.total.toStringAsFixed(2)}',
+                    '€${item.total.toStringAsFixed(2)}',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ],
@@ -867,7 +883,7 @@ class _NewOrderViewState extends State<NewOrderView> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               Text(
-                '\$${subtotal.toStringAsFixed(2)}',
+                '€${subtotal.toStringAsFixed(2)}',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,

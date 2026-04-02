@@ -167,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _loadIp() async {
     final prefs = await SharedPreferences.getInstance();
-    _ipController.text = prefs.getString('server_ip') ?? 'localhost';
+    _ipController.text = prefs.getString('server_ip') ?? '192.168.1.140';
   }
 
   void _onRoleSelected(String role) {
@@ -307,6 +307,8 @@ class _LoginScreenState extends State<LoginScreen>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      Image.asset('assets/icon.png', height: 80, width: 80),
+                      const SizedBox(height: 24),
                       const Text(
                         'POS System',
                         style: TextStyle(

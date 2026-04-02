@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pos_server_client/pos_server_client.dart';
 import '../main.dart';
+import '../shared/printer_service.dart';
 
 class CheckoutView extends StatefulWidget {
   final String? initialTableNo;
@@ -17,6 +18,35 @@ class _CheckoutViewState extends State<CheckoutView> {
   PosOrder? selectedOrder;
   String splitMode = 'None';
   String paymentMethod = 'Cash';
+
+  // Split logic state
+  int splitPeopleCount = 2;
+  double splitPercentage = 50.0;
+  List<int> selectedItemIds = [];
+  Map<int, int> itemQuantitiesToPay = {};
+
+  double get amountToPay {
+    if (selectedOrder == null) return 0.0;
+    final total = selectedOrder!.total;
+
+    switch (splitMode) {
+      case 'Equal':
+        return total / splitPeopleCount;
+      case 'Item':
+        return selectedOrder!.items?.fold(0.0, (sum, item) {
+              final qty = itemQuantitiesToPay[item.id] ?? 0;
+              final priceEach =
+                  item.totalPrice / (item.quantity > 0 ? item.quantity : 1);
+              return sum! + (qty * priceEach);
+            }) ??
+            0.0;
+      case '%':
+        return total * (splitPercentage / 100);
+      case 'None':
+      default:
+        return total;
+    }
+  }
 
   @override
   void initState() {
@@ -141,7 +171,7 @@ class _CheckoutViewState extends State<CheckoutView> {
                           style: TextStyle(color: Colors.grey[700]),
                         ),
                         Text(
-                          '\$${item.totalPrice.toStringAsFixed(2)}',
+                          '€${item.totalPrice.toStringAsFixed(2)}',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ],
@@ -151,15 +181,28 @@ class _CheckoutViewState extends State<CheckoutView> {
               ),
               const Divider(height: 32),
               const SizedBox(height: 8),
+              if (splitMode != 'None') ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Order Total:'),
+                    Text('€${order.total.toStringAsFixed(2)}'),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Total:',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  Text(
+                    splitMode == 'None' ? 'Total:' : 'Amount to Pay:',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   Text(
-                    '\$${order.total.toStringAsFixed(2)}',
+                    '€${amountToPay.toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -169,7 +212,9 @@ class _CheckoutViewState extends State<CheckoutView> {
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: () => _finalizePayment(order),
+                onPressed: amountToPay > 0
+                    ? () => _finalizePayment(order)
+                    : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0F172A),
                   minimumSize: const Size(double.infinity, 56),
@@ -231,13 +276,230 @@ class _CheckoutViewState extends State<CheckoutView> {
             ),
           ),
           const SizedBox(height: 24),
-          Text(
-            splitMode == 'None'
-                ? 'Full payment - no split'
-                : 'Splitting by $splitMode...',
-            style: TextStyle(color: Colors.grey[600]),
-          ),
+          _buildSplitControls(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSplitControls() {
+    if (selectedOrder == null) return const SizedBox.shrink();
+
+    switch (splitMode) {
+      case 'Equal':
+      case 'Seat':
+        final label = splitMode == 'Equal'
+            ? 'Number of People'
+            : 'Number of Seats';
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _buildCounterBtn(Icons.remove, () {
+                  if (splitPeopleCount > 1) {
+                    setState(() => splitPeopleCount--);
+                  }
+                }),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    '$splitPeopleCount',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                _buildCounterBtn(Icons.add, () {
+                  setState(() => splitPeopleCount++);
+                }),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Amount per share:'),
+                  Text(
+                    '€${(selectedOrder!.total / splitPeopleCount).toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      case 'Item':
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Select Items to Pay',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 300),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey[100]!),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: selectedOrder!.items?.length ?? 0,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final item = selectedOrder!.items![index];
+                  final selectedQty = itemQuantitiesToPay[item.id] ?? 0;
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.productName ?? 'Unknown',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                '€${(item.totalPrice / (item.quantity > 0 ? item.quantity : 1)).toStringAsFixed(2)} each (Total: ${item.quantity})',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            _buildCounterBtn(Icons.remove, () {
+                              if (selectedQty > 0) {
+                                setState(
+                                  () => itemQuantitiesToPay[item.id!] =
+                                      selectedQty - 1,
+                                );
+                              }
+                            }),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              child: Text(
+                                '$selectedQty',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            _buildCounterBtn(Icons.add, () {
+                              if (selectedQty < item.quantity) {
+                                setState(
+                                  () => itemQuantitiesToPay[item.id!] =
+                                      selectedQty + 1,
+                                );
+                              }
+                            }),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      case '%':
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Percentage to Pay',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  '${splitPercentage.round()}%',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Slider(
+              value: splitPercentage,
+              min: 1,
+              max: 100,
+              divisions: 99,
+              activeColor: const Color(0xFF0F172A),
+              onChanged: (val) => setState(() => splitPercentage = val),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Amount to pay:'),
+                  Text(
+                    '€${(selectedOrder!.total * splitPercentage / 100).toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      default:
+        return Text(
+          'Full payment - no split',
+          style: TextStyle(color: Colors.grey[600]),
+        );
+    }
+  }
+
+  Widget _buildCounterBtn(IconData icon, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 24),
       ),
     );
   }
@@ -459,7 +721,7 @@ class _CheckoutViewState extends State<CheckoutView> {
           ),
           const SizedBox(height: 20),
           Text(
-            '\$${order.total.toStringAsFixed(2)}',
+            '€${order.total.toStringAsFixed(2)}',
             style: const TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.bold,
@@ -497,18 +759,43 @@ class _CheckoutViewState extends State<CheckoutView> {
 
   Future<void> _finalizePayment(PosOrder order) async {
     try {
-      await client.checkout.checkout(
+      final subtotal = amountToPay;
+      final currentSplitMode = splitMode;
+
+      List<Map<String, dynamic>>? itemsToPay;
+      if (currentSplitMode == 'Item') {
+        itemsToPay = itemQuantitiesToPay.entries
+            .where((e) => e.value > 0)
+            .map((e) => {'id': e.key, 'quantity': e.value})
+            .toList();
+      }
+
+      final bill = await client.checkout.checkout(
         order.id!,
         paymentMethod,
-        subtotal: order.total,
-        total: order.total,
+        subtotal: subtotal,
+        total: subtotal,
+        itemsToPay: itemsToPay,
       );
+
+      // Print receipt automatically after successful checkout
+      await PrinterService().printReceipt(bill, items: order.items ?? []);
+
       if (mounted) {
-        setState(() => selectedOrder = null);
+        setState(() {
+          selectedOrder = null;
+          splitMode = 'None';
+          selectedItemIds.clear();
+          itemQuantitiesToPay.clear();
+        });
         _loadActiveOrders();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Payment completed successfully!'),
+          SnackBar(
+            content: Text(
+              currentSplitMode == 'None'
+                  ? 'Payment completed successfully!'
+                  : 'Split payment of €${subtotal.toStringAsFixed(2)} completed!',
+            ),
             backgroundColor: Colors.green,
           ),
         );

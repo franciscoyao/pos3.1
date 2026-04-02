@@ -112,6 +112,7 @@ class _ProductDialogState extends State<ProductDialog> {
                       label: 'Price',
                       controller: priceController,
                       isNumeric: true,
+                      prefixText: '€',
                     ),
                   ] else
                     Row(
@@ -128,6 +129,7 @@ class _ProductDialogState extends State<ProductDialog> {
                             label: 'Price',
                             controller: priceController,
                             isNumeric: true,
+                            prefixText: '€',
                           ),
                         ),
                       ],

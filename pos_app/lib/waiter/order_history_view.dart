@@ -4,7 +4,8 @@ import 'package:pos_server_client/pos_server_client.dart';
 import '../main.dart';
 
 class OrderHistoryView extends StatefulWidget {
-  const OrderHistoryView({super.key});
+  final String? stationFilter;
+  const OrderHistoryView({super.key, this.stationFilter});
 
   @override
   State<OrderHistoryView> createState() => _OrderHistoryViewState();
@@ -25,16 +26,23 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
     setState(() => isLoading = true);
     try {
       String? statusFilter;
-      if (selectedFilter != 'All') {
+      if (selectedFilter != 'All' && selectedFilter != 'Kiosk') {
         statusFilter = selectedFilter;
       }
       final fetchedOrders = await client.orders.getAll(
         includeItems: true,
         statusFilter: statusFilter,
+        stationFilter: widget.stationFilter,
       );
       if (mounted) {
         setState(() {
-          orders = fetchedOrders;
+          if (selectedFilter == 'Kiosk') {
+            orders = fetchedOrders
+                .where((o) => o.waiterName == 'Kiosk')
+                .toList();
+          } else {
+            orders = fetchedOrders;
+          }
           isLoading = false;
         });
       }
@@ -93,7 +101,14 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
   }
 
   Widget _buildFilters() {
-    final filters = ['All', 'Pending', 'In Progress', 'Completed', 'Cancelled'];
+    final filters = [
+      'All',
+      'Kiosk',
+      'Pending',
+      'In Progress',
+      'Completed',
+      'Cancelled',
+    ];
     return Row(
       children: filters
           .map(
@@ -229,7 +244,7 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '\$${order.total.toStringAsFixed(2)}',
+                  '€${order.total.toStringAsFixed(2)}',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 20,
@@ -304,7 +319,7 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(child: Text(item.productName ?? 'Unknown')),
-                      Text('\$${item.totalPrice.toStringAsFixed(2)}'),
+                      Text('€${item.totalPrice.toStringAsFixed(2)}'),
                     ],
                   ),
                 ),
@@ -318,7 +333,7 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                   ),
                   Text(
-                    '\$${order.total.toStringAsFixed(2)}',
+                    '€${order.total.toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,

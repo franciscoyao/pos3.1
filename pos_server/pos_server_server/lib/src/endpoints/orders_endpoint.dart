@@ -103,16 +103,59 @@ class OrdersEndpoint extends Endpoint {
           orderCode ??
           'ORD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
 
-      // Check table not already occupied for dine-in
+      // Check if table is occupied. If so, find the active order and append to it.
       if (orderType == 'Dine-In' && tableNo != null) {
-        final tables = await RestaurantTable.db.find(
+        final existingTables = await RestaurantTable.db.find(
           session,
           where: (t) => t.tableNumber.equals(tableNo),
           limit: 1,
           transaction: txSession,
         );
-        if (tables.isNotEmpty && tables.first.status == 'Occupied') {
-          throw Exception('Table is already occupied by another order.');
+
+        if (existingTables.isNotEmpty && existingTables.first.status == 'Occupied') {
+          final activeOrderCode = existingTables.first.orderCode;
+          if (activeOrderCode != null) {
+            final activeOrders = await PosOrder.db.find(
+              session,
+              where: (t) => t.orderCode.equals(activeOrderCode) & t.status.notEquals('Completed') & t.status.notEquals('Cancelled'),
+              limit: 1,
+              transaction: txSession,
+            );
+
+            if (activeOrders.isNotEmpty) {
+              final existingOrder = activeOrders.first;
+              
+              // Add new items to existing order
+              for (final item in items) {
+                final toInsert = OrderItem(
+                  orderId: existingOrder.id!,
+                  productId: item.productId,
+                  productName: item.productName,
+                  productStation: item.productStation,
+                  quantity: item.quantity,
+                  price: item.price,
+                  totalPrice: item.totalPrice,
+                  notes: item.notes,
+                  extras: item.extras,
+                );
+                await OrderItem.db.insertRow(session, toInsert, transaction: txSession);
+              }
+
+              // Update existing order total
+              await PosOrder.db.updateRow(
+                session,
+                existingOrder.copyWith(
+                  total: existingOrder.total + total,
+                  subtotal: (existingOrder.subtotal) + total,
+                  updatedAt: DateTime.now(),
+                ),
+                transaction: txSession,
+              );
+
+              await EventService.broadcast(session, 'order_updated');
+              return existingOrder;
+            }
+          }
         }
       }
 
@@ -135,7 +178,17 @@ class OrdersEndpoint extends Endpoint {
 
       // Insert order items
       for (final item in items) {
-        final toInsert = item.copyWith(orderId: savedOrder.id!);
+        final toInsert = OrderItem(
+          orderId: savedOrder.id!,
+          productId: item.productId,
+          productName: item.productName,
+          productStation: item.productStation,
+          quantity: item.quantity,
+          price: item.price,
+          totalPrice: item.totalPrice,
+          notes: item.notes,
+          extras: item.extras,
+        );
         await OrderItem.db.insertRow(session, toInsert, transaction: txSession);
       }
 

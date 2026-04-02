@@ -35,7 +35,7 @@ class _TablesViewState extends State<TablesView> {
   }
 
   void _subscribeToEvents() {
-    _eventSubscription = client.events.subscribe().listen((event) {
+    _eventSubscription = posEventStreamController.stream.listen((event) {
       if (event.eventType == 'table_updated' ||
           event.eventType == 'order_created' ||
           event.eventType == 'order_updated') {
@@ -261,9 +261,9 @@ class _TablesViewState extends State<TablesView> {
                     color: const Color(0xFF0EA5E9),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text(
-                    'Takeaway',
-                    style: TextStyle(
+                  child: Text(
+                    order.waiterName == 'Kiosk' ? 'Kiosk' : 'Takeaway',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 8,
                       fontWeight: FontWeight.bold,
@@ -283,7 +283,7 @@ class _TablesViewState extends State<TablesView> {
             ),
             const Spacer(),
             Text(
-              '\$${totalAmount.toStringAsFixed(2)}',
+              '€${totalAmount.toStringAsFixed(2)}',
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -435,7 +435,7 @@ class _TablesViewState extends State<TablesView> {
             const Spacer(),
             if (isActive) ...[
               Text(
-                '\$${totalAmount.toStringAsFixed(0)}',
+                '€${totalAmount.toStringAsFixed(0)}',
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -659,7 +659,7 @@ class _TablesViewState extends State<TablesView> {
                                   ),
                                   title: Text(item.productName ?? 'Unknown'),
                                   subtitle: Text(
-                                    '\$${item.price.toStringAsFixed(2)} each (Max: ${item.quantity})',
+                                    '€${item.price.toStringAsFixed(2)} each (Max: ${item.quantity})',
                                   ),
                                   trailing: isSelected
                                       ? Row(
@@ -983,7 +983,7 @@ class _TableDetailsSidebar extends StatelessWidget {
                   style: TextStyle(color: Colors.grey, fontSize: 16),
                 ),
                 Text(
-                  '\$${totalAmount.toStringAsFixed(2)}',
+                  '€${totalAmount.toStringAsFixed(2)}',
                   style: const TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
@@ -1087,7 +1087,7 @@ class _TableDetailsSidebar extends StatelessWidget {
                           const SizedBox(width: 12),
                           Text(item.productName ?? 'Unknown'),
                           const Spacer(),
-                          Text('\$${item.totalPrice.toStringAsFixed(2)}'),
+                          Text('€${item.totalPrice.toStringAsFixed(2)}'),
                         ],
                       ),
                     ),

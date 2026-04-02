@@ -628,7 +628,7 @@ class _MenuManagementViewState extends State<MenuManagementView>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '\$${product.price.toStringAsFixed(2)}',
+                        '€${product.price.toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,

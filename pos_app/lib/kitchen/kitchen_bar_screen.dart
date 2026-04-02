@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:pos_server_client/pos_server_client.dart';
 import '../main.dart';
 import '../login_screen.dart';
+import '../admin/printer_management_view.dart';
+import '../admin/settings_view.dart';
+import '../waiter/order_history_view.dart';
+import '../shared/printer_service.dart';
 
 class KitchenBarScreen extends StatefulWidget {
   final String station; // 'Kitchen' or 'Bar'
@@ -13,7 +17,7 @@ class KitchenBarScreen extends StatefulWidget {
 }
 
 class _KitchenBarScreenState extends State<KitchenBarScreen> {
-  List<PosOrder> activeOrders = [];
+  List<PosOrder> allOrders = [];
   bool isLoading = true;
   StreamSubscription? _subscription;
 
@@ -31,7 +35,7 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
   }
 
   void _setupWebsocket() {
-    _subscription = client.events.subscribe().listen((event) {
+    _subscription = posEventStreamController.stream.listen((event) {
       if (event.eventType == 'order_created' ||
           event.eventType == 'order_updated' ||
           event.eventType == 'table_updated') {
@@ -50,12 +54,12 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
     try {
       final fetched = await client.orders.getAll(
         includeItems: true,
-        statusFilter: 'Pending,In Progress',
+        statusFilter: 'Pending,In Progress,Ready',
         stationFilter: widget.station,
       );
       if (mounted) {
         setState(() {
-          activeOrders = fetched;
+          allOrders = fetched;
         });
       }
     } catch (e) {
@@ -66,113 +70,274 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: Row(
-          children: [
-            Icon(
-              widget.station == 'Kitchen' ? Icons.restaurant : Icons.local_bar,
-              color: const Color(0xFF0F172A),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              '${widget.station} Display',
-              style: const TextStyle(
-                color: Color(0xFF0F172A),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE2E8F0),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                '${activeOrders.length} Active',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            onPressed: _loadOrders,
-            icon: const Icon(Icons.refresh, color: Colors.black54),
+      backgroundColor: const Color(0xFFF8FAFC),
+      drawer: _buildDrawer(),
+      body: Column(
+        children: [
+          _buildTopBar(),
+          _buildSubHeader(),
+          Expanded(
+            child: isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _buildKanbanBoard(),
           ),
-          const VerticalDivider(width: 32, indent: 12, endIndent: 12),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopBar() {
+    return Container(
+      height: 64,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.restaurant, size: 24, color: Color(0xFF0F172A)),
+          const SizedBox(width: 12),
+          const Text(
+            'POS',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '${widget.station} Display',
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.wifi, size: 16, color: Colors.green),
+                const SizedBox(width: 8),
+                Text(
+                  'Online',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
           TextButton.icon(
             onPressed: () => Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (_) => const LoginScreen()),
             ),
-            icon: const Icon(Icons.logout, color: Colors.redAccent),
+            icon: const Icon(Icons.logout, size: 18, color: Color(0xFF0F172A)),
             label: const Text(
               'Logout',
               style: TextStyle(
-                color: Colors.redAccent,
-                fontWeight: FontWeight.bold,
+                color: Color(0xFF0F172A),
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          const SizedBox(width: 16),
         ],
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : activeOrders.isEmpty
-          ? _buildEmptyState()
-          : _buildOrdersGrid(),
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+  Widget _buildSubHeader() {
+    final activeCount = allOrders.length;
+    return Container(
+      padding: const EdgeInsets.all(24),
+      child: Row(
         children: [
-          Icon(
-            widget.station == 'Kitchen'
-                ? Icons.flatware_outlined
-                : Icons.liquor_outlined,
-            size: 80,
-            color: Colors.grey[300],
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'All caught up!',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[400],
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              widget.station == 'Kitchen' ? Icons.restaurant : Icons.local_bar,
+              color: const Color(0xFF0F172A),
             ),
           ),
-          Text(
-            'New orders will appear here automatically',
-            style: TextStyle(color: Colors.grey[500]),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${widget.station} Orders',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              Text(
+                '$activeCount active orders',
+                style: TextStyle(color: Colors.grey[500]),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildOrdersGrid() {
-    return GridView.builder(
-      padding: const EdgeInsets.all(24),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        childAspectRatio: 0.75,
-        crossAxisSpacing: 24,
-        mainAxisSpacing: 24,
+  Widget _buildDrawer() {
+    return Drawer(
+      child: Column(
+        children: [
+          DrawerHeader(
+            decoration: const BoxDecoration(color: Color(0xFF0F172A)),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.settings, color: Colors.white, size: 40),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Settings',
+                    style: TextStyle(color: Colors.white, fontSize: 20),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.history_outlined),
+            title: const Text('Order History'),
+            onTap: () {
+              Navigator.pop(context);
+              showDialog(
+                context: context,
+                builder: (_) => Dialog(
+                  child: SizedBox(
+                    width: 1000,
+                    height: 800,
+                    child: OrderHistoryView(stationFilter: widget.station),
+                  ),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.print_outlined),
+            title: const Text('Printer Settings'),
+            onTap: () {
+              Navigator.pop(context);
+              showDialog(
+                context: context,
+                builder: (_) => const Dialog(
+                  child: SizedBox(
+                    width: 800,
+                    height: 600,
+                    child: PrinterManagementView(),
+                  ),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.settings_outlined),
+            title: const Text('General Settings'),
+            onTap: () {
+              Navigator.pop(context);
+              showDialog(
+                context: context,
+                builder: (_) => const Dialog(
+                  child: SizedBox(
+                    width: 800,
+                    height: 600,
+                    child: SettingsView(),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
-      itemCount: activeOrders.length,
-      itemBuilder: (context, index) => _buildOrderCard(activeOrders[index]),
+    );
+  }
+
+  Widget _buildKanbanBoard() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildKanbanColumn('Pending', 'Pending'),
+          const SizedBox(width: 24),
+          _buildKanbanColumn('In Progress', 'In Progress'),
+          const SizedBox(width: 24),
+          _buildKanbanColumn('Ready', 'Ready'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKanbanColumn(String title, String status) {
+    final orders = allOrders.where((o) => o.status == status).toList();
+    return Expanded(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${orders.length}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: orders.length,
+              itemBuilder: (context, index) => _buildOrderCard(orders[index]),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -182,29 +347,23 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
     final isUrgent = timeAgo > 15;
 
     return Container(
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          Container(
+          Padding(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isUrgent ? Colors.red[50] : const Color(0xFFF8FAFC),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
-              ),
-            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -215,10 +374,7 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
                       order.tableNo != null
                           ? 'Table ${order.tableNo}'
                           : 'Takeaway',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     Text(
                       '#${order.orderCode?.substring(order.orderCode!.length - 4) ?? "N/A"}',
@@ -226,99 +382,56 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
                     ),
                   ],
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isUrgent ? Colors.red : const Color(0xFF0F172A),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${timeAgo}m',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+                if (isUrgent)
+                  const Icon(Icons.priority_high, color: Colors.red, size: 20),
               ],
             ),
           ),
-
-          // Items List
-          Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: (order.items ?? []).length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (context, idx) {
-                final item = order.items![idx];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${item.quantity}x',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
-                        ),
+          const Divider(height: 1),
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            itemCount: (order.items ?? []).length,
+            itemBuilder: (context, idx) {
+              final item = order.items![idx];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Text(
+                      '${item.quantity}x',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        item.productName ?? "N/A",
+                        style: const TextStyle(fontSize: 13),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.productName ?? "N/A",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w500,
-                                fontSize: 14,
-                              ),
-                            ),
-                            if (item.notes != null && item.notes!.isNotEmpty)
-                              Text(
-                                item.notes!,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.red[400],
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
-
-          // Actions
           Padding(
             padding: const EdgeInsets.all(16),
-            child: ElevatedButton(
-              onPressed: () => _markOrderReady(order),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
-                minimumSize: const Size(double.infinity, 48),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.print_outlined),
+                  onPressed: () {
+                    PrinterService().printKOT(
+                      order,
+                      station: widget.station,
+                      items: order.items ?? [],
+                    );
+                  },
                 ),
-                elevation: 0,
-              ),
-              child: const Text(
-                'Mark as Ready',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+                const SizedBox(width: 8),
+                Expanded(child: _buildActionButton(order)),
+              ],
             ),
           ),
         ],
@@ -326,25 +439,58 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
     );
   }
 
-  Future<void> _markOrderReady(PosOrder order) async {
+  Widget _buildActionButton(PosOrder order) {
+    String nextStatus = '';
+    String label = '';
+    Color color = Colors.blue;
+
+    switch (order.status) {
+      case 'Pending':
+        nextStatus = 'In Progress';
+        label = 'Start';
+        color = const Color(0xFF0F172A);
+        break;
+      case 'In Progress':
+        nextStatus = 'Ready';
+        label = 'Mark Ready';
+        color = Colors.orange;
+        break;
+      case 'Ready':
+        nextStatus = 'Completed';
+        label = 'Complete';
+        color = const Color(0xFF10B981);
+        break;
+    }
+
+    if (nextStatus.isEmpty) return const SizedBox.shrink();
+
+    return ElevatedButton(
+      onPressed: () => _updateStatus(order, nextStatus),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        minimumSize: const Size(double.infinity, 40),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        elevation: 0,
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _updateStatus(PosOrder order, String status) async {
     try {
-      // In a more complex setup, we might mark individual items as ready.
-      // For now, marking the order as 'In Progress' (meaning prepared) or updating status.
-      await client.orders.updateStatus(order.id!, 'In Progress');
+      await client.orders.updateStatus(order.id!, status);
       _loadOrdersQuietly();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Order #${order.orderCode ?? "N/A"} is ready!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error updating order: $e')));
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
