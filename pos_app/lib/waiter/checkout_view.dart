@@ -18,20 +18,26 @@ class _CheckoutViewState extends State<CheckoutView> {
   PosOrder? selectedOrder;
   String splitMode = 'None';
   String paymentMethod = 'Cash';
+  final TextEditingController _taxNumberController = TextEditingController();
+  final TextEditingController _customAmountController = TextEditingController();
 
   // Split logic state
   int splitPeopleCount = 2;
+  int peoplePayingNow = 1;
   double splitPercentage = 50.0;
   List<int> selectedItemIds = [];
   Map<int, int> itemQuantitiesToPay = {};
+  List<double> customShares = [0.0];
 
   double get amountToPay {
     if (selectedOrder == null) return 0.0;
     final total = selectedOrder!.total;
 
     switch (splitMode) {
-      case 'Equal':
-        return total / splitPeopleCount;
+      case 'Part':
+        return customShares.fold(0.0, (sum, val) => sum + val);
+      case 'Seat':
+        return (total / splitPeopleCount) * peoplePayingNow;
       case 'Item':
         return selectedOrder!.items?.fold(0.0, (sum, item) {
               final qty = itemQuantitiesToPay[item.id] ?? 0;
@@ -55,6 +61,13 @@ class _CheckoutViewState extends State<CheckoutView> {
     _loadActiveOrders();
   }
 
+  @override
+  void dispose() {
+    _taxNumberController.dispose();
+    _customAmountController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadActiveOrders() async {
     setState(() => isLoading = true);
     try {
@@ -73,6 +86,15 @@ class _CheckoutViewState extends State<CheckoutView> {
                 .toList();
             if (filtered.isNotEmpty) {
               selectedOrder = filtered.first;
+              if (selectedOrder?.taxNumber != null) {
+                _taxNumberController.text = selectedOrder!.taxNumber!;
+              }
+              if (selectedOrder?.remainingSplitCount != null) {
+                splitPeopleCount = selectedOrder!.remainingSplitCount!;
+                if (splitPeopleCount > 0) {
+                  splitMode = 'Part';
+                }
+              }
             }
           }
         });
@@ -268,7 +290,7 @@ class _CheckoutViewState extends State<CheckoutView> {
             child: Row(
               children: [
                 _buildSplitTab('None'),
-                _buildSplitTab('Equal'),
+                _buildSplitTab('Part'),
                 _buildSplitTab('Item'),
                 _buildSplitTab('Seat'),
                 _buildSplitTab('%'),
@@ -286,21 +308,173 @@ class _CheckoutViewState extends State<CheckoutView> {
     if (selectedOrder == null) return const SizedBox.shrink();
 
     switch (splitMode) {
-      case 'Equal':
-      case 'Seat':
-        final label = splitMode == 'Equal'
-            ? 'Number of People'
-            : 'Number of Seats';
+      case 'Part':
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const Text(
+              'Custom Shares',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Enter custom amounts for each customer paying now.',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+            const SizedBox(height: 24),
+            ...customShares.asMap().entries.map((entry) {
+              final index = entry.key;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: const Color(0xFF0F172A),
+                      radius: 14,
+                      child: Text(
+                        '${index + 1}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextField(
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.euro, size: 18),
+                          hintText: '0.00',
+                          labelText: 'Customer ${index + 1} Amount',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        onChanged: (val) {
+                          final parsed = double.tryParse(val) ?? 0.0;
+                          setState(() => customShares[index] = parsed);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (customShares.length > 1)
+                      IconButton(
+                        onPressed: () {
+                          setState(() => customShares.removeAt(index));
+                        },
+                        icon: const Icon(Icons.remove_circle_outline),
+                        color: Colors.red,
+                      ),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                TextButton.icon(
+                  onPressed: () {
+                    setState(() => customShares.add(0.0));
+                  },
+                  icon: const Icon(Icons.add_circle_outline),
+                  label: const Text('Add Another Customer'),
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () {
+                    final remaining =
+                        selectedOrder!.total -
+                        customShares.fold(0.0, (sum, val) => sum + val);
+                    if (remaining > 0.01) {
+                      setState(() => customShares.add(remaining));
+                    }
+                  },
+                  icon: const Icon(Icons.account_balance_wallet_outlined),
+                  label: const Text('Pay Remaining Balance'),
+                ),
+              ],
+            ),
+            const Divider(height: 48),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Total for these customers:'),
+                  Text(
+                    '€${amountToPay.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      case 'Seat':
+        final label = splitMode == 'Part'
+            ? 'Total People / Shares'
+            : 'Total Seats';
+
+        final isContinuous = selectedOrder!.remainingSplitCount != null;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (isContinuous)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue[100]!),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.info_outline,
+                      color: Colors.blue,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'This order has ${selectedOrder!.remainingSplitCount} people remaining to pay.',
+                        style: TextStyle(
+                          color: Colors.blue[900],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             Row(
               children: [
                 _buildCounterBtn(Icons.remove, () {
                   if (splitPeopleCount > 1) {
-                    setState(() => splitPeopleCount--);
+                    setState(() {
+                      splitPeopleCount--;
+                      if (peoplePayingNow > splitPeopleCount) {
+                        peoplePayingNow = splitPeopleCount;
+                      }
+                    });
                   }
                 }),
                 Padding(
@@ -318,7 +492,37 @@ class _CheckoutViewState extends State<CheckoutView> {
                 }),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
+            const Text(
+              'How many are paying now?',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _buildCounterBtn(Icons.remove, () {
+                  if (peoplePayingNow > 1) {
+                    setState(() => peoplePayingNow--);
+                  }
+                }),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    '$peoplePayingNow',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                _buildCounterBtn(Icons.add, () {
+                  if (peoplePayingNow < splitPeopleCount) {
+                    setState(() => peoplePayingNow++);
+                  }
+                }),
+              ],
+            ),
+            const SizedBox(height: 24),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -328,9 +532,9 @@ class _CheckoutViewState extends State<CheckoutView> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Amount per share:'),
+                  const Text('Total to pay for these people:'),
                   Text(
-                    '€${(selectedOrder!.total / splitPeopleCount).toStringAsFixed(2)}',
+                    '€${amountToPay.toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
@@ -338,6 +542,43 @@ class _CheckoutViewState extends State<CheckoutView> {
                   ),
                 ],
               ),
+            ),
+          ],
+        );
+      case 'Custom':
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter Amount to Pay',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _customAmountController,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.euro),
+                hintText: '0.00',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _customAmountController.clear();
+                    setState(() {});
+                  },
+                ),
+              ),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              onChanged: (val) => setState(() {}),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Maximum available: €${selectedOrder!.total.toStringAsFixed(2)}',
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
             ),
           ],
         );
@@ -359,7 +600,7 @@ class _CheckoutViewState extends State<CheckoutView> {
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: selectedOrder!.items?.length ?? 0,
-                separatorBuilder: (_, __) => const Divider(height: 1),
+                separatorBuilder: (context, index) => const Divider(height: 1),
                 itemBuilder: (context, index) {
                   final item = selectedOrder!.items![index];
                   final selectedQty = itemQuantitiesToPay[item.id] ?? 0;
@@ -545,23 +786,54 @@ class _CheckoutViewState extends State<CheckoutView> {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.grey[100]!),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Payment Method',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 24),
-          _buildPaymentOption('Cash', Icons.money),
-          const SizedBox(height: 12),
-          _buildPaymentOption('Card', Icons.credit_card),
-          const SizedBox(height: 12),
-          _buildPaymentOption(
-            'Mixed (Cash + Card)',
-            Icons.account_balance_wallet,
-          ),
-        ],
+      child: RadioGroup<String>(
+        groupValue: paymentMethod,
+        onChanged: (val) => setState(() => paymentMethod = val!),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Payment Method',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 24),
+            _buildPaymentOption('Cash', Icons.money),
+            const SizedBox(height: 12),
+            _buildPaymentOption('Card', Icons.credit_card),
+            const SizedBox(height: 12),
+            _buildPaymentOption(
+              'Mixed (Cash + Card)',
+              Icons.account_balance_wallet,
+            ),
+            const SizedBox(height: 32),
+            const Text(
+              'Tax Information',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _taxNumberController,
+              decoration: InputDecoration(
+                labelText: 'Tax Identification Number (NIF)',
+                hintText: 'Enter tax number (optional)',
+                prefixIcon: const Icon(Icons.description_outlined),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Colors.grey[200]!),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Colors.grey[200]!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Color(0xFF0F172A)),
+                ),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -581,12 +853,7 @@ class _CheckoutViewState extends State<CheckoutView> {
         ),
         child: Row(
           children: [
-            Radio<String>(
-              value: method,
-              groupValue: paymentMethod,
-              onChanged: (val) => setState(() => paymentMethod = val!),
-              activeColor: const Color(0xFF0F172A),
-            ),
+            Radio<String>(value: method, activeColor: const Color(0xFF0F172A)),
             Icon(icon, color: Colors.grey[700]),
             const SizedBox(width: 12),
             Text(method, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -626,7 +893,13 @@ class _CheckoutViewState extends State<CheckoutView> {
           children: [
             if (selectedOrder != null)
               TextButton.icon(
-                onPressed: () => setState(() => selectedOrder = null),
+                onPressed: () {
+                  setState(() {
+                    selectedOrder = null;
+                    _taxNumberController.clear();
+                    _customAmountController.clear();
+                  });
+                },
                 icon: const Icon(Icons.arrow_back),
                 label: const Text('Back to Grid'),
               ),
@@ -735,7 +1008,22 @@ class _CheckoutViewState extends State<CheckoutView> {
           ),
           const Spacer(),
           ElevatedButton(
-            onPressed: () => setState(() => selectedOrder = order),
+            onPressed: () {
+              setState(() {
+                selectedOrder = order;
+                if (order.taxNumber != null) {
+                  _taxNumberController.text = order.taxNumber!;
+                } else {
+                  _taxNumberController.clear();
+                }
+                if (order.remainingSplitCount != null) {
+                  splitPeopleCount = order.remainingSplitCount!;
+                  splitMode = 'Part';
+                } else {
+                  splitPeopleCount = 2; // default
+                }
+              });
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF10B981),
               minimumSize: const Size(double.infinity, 48),
@@ -762,12 +1050,22 @@ class _CheckoutViewState extends State<CheckoutView> {
       final subtotal = amountToPay;
       final currentSplitMode = splitMode;
 
-      List<Map<String, dynamic>>? itemsToPay;
+      List<CheckoutItem>? itemsToPay;
       if (currentSplitMode == 'Item') {
         itemsToPay = itemQuantitiesToPay.entries
             .where((e) => e.value > 0)
-            .map((e) => {'id': e.key, 'quantity': e.value})
+            .map((e) => CheckoutItem(id: e.key, quantity: e.value))
             .toList();
+      }
+
+      int? initialSplitCount;
+      int? remainingSplitCount;
+
+      if (currentSplitMode == 'Part' || currentSplitMode == 'Seat') {
+        // If it's the first split, set initialSplitCount
+        initialSplitCount = order.initialSplitCount ?? splitPeopleCount;
+        // Remaining is current total minus people paying now
+        remainingSplitCount = splitPeopleCount - peoplePayingNow;
       }
 
       final bill = await client.checkout.checkout(
@@ -775,6 +1073,11 @@ class _CheckoutViewState extends State<CheckoutView> {
         paymentMethod,
         subtotal: subtotal,
         total: subtotal,
+        taxNumber: _taxNumberController.text.isNotEmpty
+            ? _taxNumberController.text
+            : null,
+        initialSplitCount: initialSplitCount,
+        remainingSplitCount: remainingSplitCount,
         itemsToPay: itemsToPay,
       );
 
@@ -787,6 +1090,8 @@ class _CheckoutViewState extends State<CheckoutView> {
           splitMode = 'None';
           selectedItemIds.clear();
           itemQuantitiesToPay.clear();
+          _taxNumberController.clear();
+          customShares = [0.0];
         });
         _loadActiveOrders();
         ScaffoldMessenger.of(context).showSnackBar(

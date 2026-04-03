@@ -23,11 +23,15 @@ abstract class PosOrder implements _i1.SerializableModel {
     this.tableNo,
     String? status,
     this.waiterName,
+    this.taxNumber,
     double? subtotal,
     double? taxAmount,
     double? serviceAmount,
     double? tipAmount,
     required this.total,
+    this.initialSplitCount,
+    this.remainingSplitCount,
+    this.scheduledTime,
     this.createdAt,
     this.updatedAt,
     this.items,
@@ -45,11 +49,15 @@ abstract class PosOrder implements _i1.SerializableModel {
     String? tableNo,
     String? status,
     String? waiterName,
+    String? taxNumber,
     double? subtotal,
     double? taxAmount,
     double? serviceAmount,
     double? tipAmount,
     required double total,
+    int? initialSplitCount,
+    int? remainingSplitCount,
+    DateTime? scheduledTime,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<_i2.OrderItem>? items,
@@ -64,11 +72,19 @@ abstract class PosOrder implements _i1.SerializableModel {
       tableNo: jsonSerialization['tableNo'] as String?,
       status: jsonSerialization['status'] as String?,
       waiterName: jsonSerialization['waiterName'] as String?,
+      taxNumber: jsonSerialization['taxNumber'] as String?,
       subtotal: (jsonSerialization['subtotal'] as num?)?.toDouble(),
       taxAmount: (jsonSerialization['taxAmount'] as num?)?.toDouble(),
       serviceAmount: (jsonSerialization['serviceAmount'] as num?)?.toDouble(),
       tipAmount: (jsonSerialization['tipAmount'] as num?)?.toDouble(),
       total: (jsonSerialization['total'] as num).toDouble(),
+      initialSplitCount: jsonSerialization['initialSplitCount'] as int?,
+      remainingSplitCount: jsonSerialization['remainingSplitCount'] as int?,
+      scheduledTime: jsonSerialization['scheduledTime'] == null
+          ? null
+          : _i1.DateTimeJsonExtension.fromJson(
+              jsonSerialization['scheduledTime'],
+            ),
       createdAt: jsonSerialization['createdAt'] == null
           ? null
           : _i1.DateTimeJsonExtension.fromJson(jsonSerialization['createdAt']),
@@ -100,6 +116,8 @@ abstract class PosOrder implements _i1.SerializableModel {
 
   String? waiterName;
 
+  String? taxNumber;
+
   double subtotal;
 
   double taxAmount;
@@ -109,6 +127,12 @@ abstract class PosOrder implements _i1.SerializableModel {
   double tipAmount;
 
   double total;
+
+  int? initialSplitCount;
+
+  int? remainingSplitCount;
+
+  DateTime? scheduledTime;
 
   DateTime? createdAt;
 
@@ -127,11 +151,15 @@ abstract class PosOrder implements _i1.SerializableModel {
     String? tableNo,
     String? status,
     String? waiterName,
+    String? taxNumber,
     double? subtotal,
     double? taxAmount,
     double? serviceAmount,
     double? tipAmount,
     double? total,
+    int? initialSplitCount,
+    int? remainingSplitCount,
+    DateTime? scheduledTime,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<_i2.OrderItem>? items,
@@ -147,11 +175,16 @@ abstract class PosOrder implements _i1.SerializableModel {
       if (tableNo != null) 'tableNo': tableNo,
       'status': status,
       if (waiterName != null) 'waiterName': waiterName,
+      if (taxNumber != null) 'taxNumber': taxNumber,
       'subtotal': subtotal,
       'taxAmount': taxAmount,
       'serviceAmount': serviceAmount,
       'tipAmount': tipAmount,
       'total': total,
+      if (initialSplitCount != null) 'initialSplitCount': initialSplitCount,
+      if (remainingSplitCount != null)
+        'remainingSplitCount': remainingSplitCount,
+      if (scheduledTime != null) 'scheduledTime': scheduledTime?.toJson(),
       if (createdAt != null) 'createdAt': createdAt?.toJson(),
       if (updatedAt != null) 'updatedAt': updatedAt?.toJson(),
       if (items != null) 'items': items?.toJson(valueToJson: (v) => v.toJson()),
@@ -175,11 +208,15 @@ class _PosOrderImpl extends PosOrder {
     String? tableNo,
     String? status,
     String? waiterName,
+    String? taxNumber,
     double? subtotal,
     double? taxAmount,
     double? serviceAmount,
     double? tipAmount,
     required double total,
+    int? initialSplitCount,
+    int? remainingSplitCount,
+    DateTime? scheduledTime,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<_i2.OrderItem>? items,
@@ -191,11 +228,15 @@ class _PosOrderImpl extends PosOrder {
          tableNo: tableNo,
          status: status,
          waiterName: waiterName,
+         taxNumber: taxNumber,
          subtotal: subtotal,
          taxAmount: taxAmount,
          serviceAmount: serviceAmount,
          tipAmount: tipAmount,
          total: total,
+         initialSplitCount: initialSplitCount,
+         remainingSplitCount: remainingSplitCount,
+         scheduledTime: scheduledTime,
          createdAt: createdAt,
          updatedAt: updatedAt,
          items: items,
@@ -213,11 +254,15 @@ class _PosOrderImpl extends PosOrder {
     Object? tableNo = _Undefined,
     String? status,
     Object? waiterName = _Undefined,
+    Object? taxNumber = _Undefined,
     double? subtotal,
     double? taxAmount,
     double? serviceAmount,
     double? tipAmount,
     double? total,
+    Object? initialSplitCount = _Undefined,
+    Object? remainingSplitCount = _Undefined,
+    Object? scheduledTime = _Undefined,
     Object? createdAt = _Undefined,
     Object? updatedAt = _Undefined,
     Object? items = _Undefined,
@@ -230,11 +275,21 @@ class _PosOrderImpl extends PosOrder {
       tableNo: tableNo is String? ? tableNo : this.tableNo,
       status: status ?? this.status,
       waiterName: waiterName is String? ? waiterName : this.waiterName,
+      taxNumber: taxNumber is String? ? taxNumber : this.taxNumber,
       subtotal: subtotal ?? this.subtotal,
       taxAmount: taxAmount ?? this.taxAmount,
       serviceAmount: serviceAmount ?? this.serviceAmount,
       tipAmount: tipAmount ?? this.tipAmount,
       total: total ?? this.total,
+      initialSplitCount: initialSplitCount is int?
+          ? initialSplitCount
+          : this.initialSplitCount,
+      remainingSplitCount: remainingSplitCount is int?
+          ? remainingSplitCount
+          : this.remainingSplitCount,
+      scheduledTime: scheduledTime is DateTime?
+          ? scheduledTime
+          : this.scheduledTime,
       createdAt: createdAt is DateTime? ? createdAt : this.createdAt,
       updatedAt: updatedAt is DateTime? ? updatedAt : this.updatedAt,
       items: items is List<_i2.OrderItem>?

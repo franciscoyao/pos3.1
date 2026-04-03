@@ -4,6 +4,7 @@ import 'tables_view.dart';
 import 'checkout_view.dart';
 import 'order_history_view.dart';
 import 'bills_view.dart';
+import 'printer_view.dart';
 import '../login_screen.dart';
 
 class WaiterShell extends StatefulWidget {
@@ -74,6 +75,7 @@ class _WaiterShellState extends State<WaiterShell> {
           _buildSidebarItem('Checkout', Icons.credit_card_outlined),
           _buildSidebarItem('Orders', Icons.history_outlined),
           _buildSidebarItem('Bills', Icons.request_quote_outlined),
+          _buildSidebarItem('Printers', Icons.print_outlined),
           const Spacer(),
         ],
       ),
@@ -198,13 +200,13 @@ class _WaiterShellState extends State<WaiterShell> {
           },
         );
       case 'Checkout':
-        return CheckoutView(
-          initialTableNo: _viewParams?['tableNo'],
-        );
+        return CheckoutView(initialTableNo: _viewParams?['tableNo']);
       case 'Orders':
         return const OrderHistoryView();
       case 'Bills':
         return const BillsView();
+      case 'Printers':
+        return const PrinterView();
       default:
         return const NewOrderView();
     }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:pos_server_client/pos_server_client.dart';
 import '../main.dart';
 import '../login_screen.dart';
@@ -54,7 +55,7 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
     try {
       final fetched = await client.orders.getAll(
         includeItems: true,
-        statusFilter: 'Pending,In Progress,Ready',
+        statusFilter: 'Pending,In Progress,Ready,Scheduled',
         stationFilter: widget.station,
       );
       if (mounted) {
@@ -282,6 +283,8 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _buildKanbanColumn('Scheduled', 'Scheduled'),
+          const SizedBox(width: 24),
           _buildKanbanColumn('Pending', 'Pending'),
           const SizedBox(width: 24),
           _buildKanbanColumn('In Progress', 'In Progress'),
@@ -380,6 +383,29 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
                       '#${order.orderCode?.substring(order.orderCode!.length - 4) ?? "N/A"}',
                       style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                     ),
+                    if (order.status == 'Scheduled' &&
+                        order.scheduledTime != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.schedule_rounded,
+                              size: 14,
+                              color: Colors.blue,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Scheduled: ${DateFormat('HH:mm').format(order.scheduledTime!.toLocal())}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.blue,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
                 if (isUrgent)
@@ -445,6 +471,11 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
     Color color = Colors.blue;
 
     switch (order.status) {
+      case 'Scheduled':
+        nextStatus = 'Pending';
+        label = 'Accept Now';
+        color = Colors.blue;
+        break;
       case 'Pending':
         nextStatus = 'In Progress';
         label = 'Start';

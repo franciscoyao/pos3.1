@@ -25,6 +25,7 @@ orders:
   - getById:
   - create:
   - updateStatus:
+  - update:
   - merge:
   - split:
 products:
@@ -37,6 +38,12 @@ products:
   - deleteExtra:
 reports:
   - getSummaryJson:
+reservations:
+  - getAll:
+  - create:
+  - update:
+  - delete:
+  - getByTable:
 settings:
   - getSettings:
   - updateSettings:
@@ -44,6 +51,7 @@ settings:
   - restoreDatabase:
   - purgeOldData:
   - getDatabaseSize:
+  - clearAllTransactionalData:
 subcategories:
   - getAll:
   - create:

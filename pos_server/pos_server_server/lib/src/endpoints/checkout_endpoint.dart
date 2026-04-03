@@ -13,7 +13,10 @@ class CheckoutEndpoint extends Endpoint {
     double? serviceAmount,
     double? tipAmount,
     double? total,
-    List<Map<String, dynamic>>? itemsToPay,
+    String? taxNumber,
+    int? initialSplitCount,
+    int? remainingSplitCount,
+    List<CheckoutItem>? itemsToPay,
   }) async {
     return await session.db.transaction<Bill>((txSession) async {
       final order = await PosOrder.db.findById(
@@ -39,6 +42,7 @@ class CheckoutEndpoint extends Endpoint {
           tableNo: order.tableNo,
           waiterName: waiterName ?? order.waiterName,
           paymentMethod: paymentMethod,
+          taxNumber: taxNumber,
           subtotal: subtotal ?? totalToPay,
           taxAmount: taxAmount ?? 0,
           serviceAmount: serviceAmount ?? 0,
@@ -49,19 +53,40 @@ class CheckoutEndpoint extends Endpoint {
         transaction: txSession,
       );
 
-      // 3. Subtract paid items from order if splitting by item
+      // 3. Save Bill Items and Subtract from order if needed
       if (itemsToPay != null && itemsToPay.isNotEmpty) {
         for (final itemToPay in itemsToPay) {
-          final itemId = itemToPay['id'] as int;
-          final qtyToPay = itemToPay['quantity'] as int;
+          final itemId = itemToPay.id;
+          final qtyToPay = itemToPay.quantity;
           if (qtyToPay <= 0) continue;
 
-          final existing = await OrderItem.db.findById(session, itemId, transaction: txSession);
+          final existing = await OrderItem.db.findById(
+            session,
+            itemId,
+            transaction: txSession,
+          );
           if (existing == null) continue;
+
+          // Save to BillItem
+          await BillItem.db.insertRow(
+            session,
+            BillItem(
+              billId: bill.id!,
+              productName: existing.productName,
+              quantity: qtyToPay,
+              price: existing.price,
+              totalPrice: qtyToPay * existing.price,
+            ),
+            transaction: txSession,
+          );
 
           if (existing.quantity <= qtyToPay) {
             // Item fully paid, delete it from the order
-            await OrderItem.db.deleteRow(session, existing, transaction: txSession);
+            await OrderItem.db.deleteRow(
+              session,
+              existing,
+              transaction: txSession,
+            );
           } else {
             // Item partially paid, reduce quantity
             final remainingQty = existing.quantity - qtyToPay;
@@ -75,22 +100,61 @@ class CheckoutEndpoint extends Endpoint {
             );
           }
         }
+      } else {
+        // No itemsToPay provided. If it's a full payment, record all items in the Bill
+        final remainingTotal = order.total - totalToPay;
+        final isFullyPaid = remainingTotal <= 0.01;
+
+        if (isFullyPaid) {
+          final items = await OrderItem.db.find(
+            session,
+            where: (t) => t.orderId.equals(order.id!),
+            transaction: txSession,
+          );
+          for (final item in items) {
+            await BillItem.db.insertRow(
+              session,
+              BillItem(
+                billId: bill.id!,
+                productName: item.productName,
+                quantity: item.quantity,
+                price: item.price,
+                totalPrice: item.totalPrice,
+              ),
+              transaction: txSession,
+            );
+            // Delete item from active order
+            await OrderItem.db.deleteRow(
+              session,
+              item,
+              transaction: txSession,
+            );
+          }
+        }
       }
 
       // 4. Update order total and check if fully paid
       final remainingTotal = order.total - totalToPay;
-      final isFullyPaid = remainingTotal <= 0.01;
+
+      // If we are splitting by seat/people, we check the remaining count
+      bool isFullyPaid;
+      if (remainingSplitCount != null) {
+        isFullyPaid = remainingSplitCount <= 0;
+      } else {
+        isFullyPaid = remainingTotal <= 0.01;
+      }
 
       await PosOrder.db.updateRow(
         session,
         order.copyWith(
           total: remainingTotal > 0 ? remainingTotal : 0,
-          subtotal:
-              (order.subtotal - (subtotal ?? totalToPay)) > 0
-                  ? (order.subtotal - (subtotal ?? totalToPay))
-                  : 0,
+          subtotal: (order.subtotal - (subtotal ?? totalToPay)) > 0
+              ? (order.subtotal - (subtotal ?? totalToPay))
+              : 0,
           status: isFullyPaid ? 'Completed' : order.status,
           billId: isFullyPaid ? bill.id : order.billId,
+          initialSplitCount: initialSplitCount ?? order.initialSplitCount,
+          remainingSplitCount: remainingSplitCount,
           updatedAt: DateTime.now(),
         ),
         transaction: txSession,
@@ -133,28 +197,18 @@ class CheckoutEndpoint extends Endpoint {
     );
   }
 
-  Future<Bill> getDetails(Session session, int billId) async {
+  Future<BillWithItems> getDetails(Session session, int billId) async {
     final bill = await Bill.db.findById(session, billId);
     if (bill == null) throw Exception('Bill not found');
 
-    // Fetch all order items linked to this bill via orders
-    final orders = await PosOrder.db.find(
+    final items = await BillItem.db.find(
       session,
       where: (t) => t.billId.equals(billId),
     );
-    if (orders.isEmpty) return bill;
 
-    final orderIds = orders.map((o) => o.id!).toSet();
-    await OrderItem.db.find(
-      session,
-      where: (t) => t.orderId.inSet(orderIds),
+    return BillWithItems(
+      bill: bill,
+      items: items,
     );
-
-    // Return bill with items attached (reuse items field in a synthetic PosOrder-style way)
-    // We encode items in a JSON-like manner in the bill's extra field or return
-    // a bill that carries items. Since Bill doesn't have an items field we return
-    // a copy in the endpoint payload alongside.
-    // For simplicity, attach as the first order's items list (common case).
-    return bill;
   }
 }

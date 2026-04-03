@@ -228,18 +228,22 @@ class _SettingsViewState extends State<SettingsView> {
                         final success = await client.settings.purgeOldData(0);
                         if (success) {
                           if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('System cleaned successfully!'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('System cleaned successfully!'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
                         }
                       } catch (e) {
                         if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Cleanup failed: $e')),
-                        );
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Cleanup failed: $e')),
+                          );
+                        }
                       } finally {
                         if (mounted) setState(() => _isLoading = false);
                       }

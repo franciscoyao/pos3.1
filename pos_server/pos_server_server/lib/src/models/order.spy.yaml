@@ -7,11 +7,15 @@ fields:
   tableNo: String?
   status: String, default='Pending'
   waiterName: String?
+  taxNumber: String?
   subtotal: double, default=0
   taxAmount: double, default=0
   serviceAmount: double, default=0
   tipAmount: double, default=0
   total: double
+  initialSplitCount: int?
+  remainingSplitCount: int?
+  scheduledTime: DateTime?
   createdAt: DateTime?
   updatedAt: DateTime?
   items: List<OrderItem>?

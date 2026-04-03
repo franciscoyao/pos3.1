@@ -18,7 +18,9 @@ class _TablesViewState extends State<TablesView> {
   List<RestaurantTable> tables = [];
   List<PosOrder> takeawayOrders = [];
   Map<String, List<PosOrder>> tableOrders = {};
+  List<Reservation> reservations = [];
   bool isLoading = true;
+  String _selectedTab = 'Tables'; // 'Tables' or 'Reservations'
   StreamSubscription? _eventSubscription;
 
   @override
@@ -38,7 +40,8 @@ class _TablesViewState extends State<TablesView> {
     _eventSubscription = posEventStreamController.stream.listen((event) {
       if (event.eventType == 'table_updated' ||
           event.eventType == 'order_created' ||
-          event.eventType == 'order_updated') {
+          event.eventType == 'order_updated' ||
+          event.eventType == 'reservation_updated') {
         _loadDataQuietly();
       }
     });
@@ -55,8 +58,9 @@ class _TablesViewState extends State<TablesView> {
       final fetchedTables = await client.tables.getAll();
       final fetchedOrders = await client.orders.getAll(
         includeItems: true,
-        statusFilter: 'Pending,In Progress',
+        statusFilter: 'Pending,In Progress,Scheduled',
       );
+      final fetchedReservations = await client.reservations.getAll();
 
       final Map<String, List<PosOrder>> ordersMap = {};
       final List<PosOrder> takeaways = [];
@@ -73,6 +77,7 @@ class _TablesViewState extends State<TablesView> {
           tables = fetchedTables;
           tableOrders = ordersMap;
           takeawayOrders = takeaways;
+          reservations = fetchedReservations;
         });
       }
     } catch (e) {
@@ -143,9 +148,9 @@ class _TablesViewState extends State<TablesView> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Tables',
-                      style: TextStyle(
+                    Text(
+                      _selectedTab == 'Tables' ? 'Tables' : 'Reservations',
+                      style: const TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF0F172A),
@@ -153,65 +158,545 @@ class _TablesViewState extends State<TablesView> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '${tables.length} tables • $activeTables active',
+                      _selectedTab == 'Tables'
+                          ? '${tables.length} tables • $activeTables active'
+                          : '${reservations.length} total reservations',
                       style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                     ),
                   ],
                 ),
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      _buildTabButton('Tables', Icons.grid_view_rounded),
+                      _buildTabButton('Reservations', Icons.event_note_rounded),
+                    ],
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 32),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 5,
-                childAspectRatio: 0.85,
-                crossAxisSpacing: 24,
-                mainAxisSpacing: 24,
-              ),
-              itemCount: tables.length + 1,
-              itemBuilder: (context, index) {
-                if (index == 0) return _buildAddTableCard();
-                return _buildTableCard(tables[index - 1]);
-              },
-            ),
-            if (takeawayOrders.isNotEmpty) ...[
-              const SizedBox(height: 48),
-              const Row(
-                children: [
-                  Icon(Icons.takeout_dining_rounded, size: 24),
-                  SizedBox(width: 12),
-                  Text(
-                    'Active Takeaway Orders',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 5,
-                  childAspectRatio: 0.85,
-                  crossAxisSpacing: 24,
-                  mainAxisSpacing: 24,
-                ),
-                itemCount: takeawayOrders.length,
-                itemBuilder: (context, index) {
-                  return _buildTakeawayCard(takeawayOrders[index]);
-                },
-              ),
-            ],
+            if (_selectedTab == 'Tables')
+              _buildTablesGrid()
+            else
+              _buildReservationsView(),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildTabButton(String label, IconData icon) {
+    final isSelected = _selectedTab == label;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedTab = label),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isSelected ? const Color(0xFF0F172A) : Colors.grey[600],
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? const Color(0xFF0F172A) : Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReservationsView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Upcoming Reservations',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => _showReservationDialog(),
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text(
+                'Add Reservation',
+                style: TextStyle(color: Colors.white),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0F172A),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        if (reservations.isEmpty)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(64.0),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.event_busy_rounded,
+                    size: 64,
+                    color: Colors.grey[300],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No reservations found',
+                    style: TextStyle(color: Colors.grey[400], fontSize: 18),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              childAspectRatio: 1.2,
+              crossAxisSpacing: 24,
+              mainAxisSpacing: 24,
+            ),
+            itemCount: reservations.length,
+            itemBuilder: (context, index) {
+              final res = reservations[index];
+              return _buildReservationCard(res);
+            },
+          ),
+      ],
+    );
+  }
+
+  Widget _buildTablesGrid() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 5,
+            childAspectRatio: 0.85,
+            crossAxisSpacing: 24,
+            mainAxisSpacing: 24,
+          ),
+          itemCount: tables.length + 1,
+          itemBuilder: (context, index) {
+            if (index == 0) return _buildAddTableCard();
+            return _buildTableCard(tables[index - 1]);
+          },
+        ),
+        if (takeawayOrders.isNotEmpty) ...[
+          const SizedBox(height: 48),
+          const Row(
+            children: [
+              Icon(Icons.takeout_dining_rounded, size: 24),
+              SizedBox(width: 12),
+              Text(
+                'Active Takeaway Orders',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 5,
+              childAspectRatio: 0.85,
+              crossAxisSpacing: 24,
+              mainAxisSpacing: 24,
+            ),
+            itemCount: takeawayOrders.length,
+            itemBuilder: (context, index) {
+              return _buildTakeawayCard(takeawayOrders[index]);
+            },
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildReservationCard(Reservation res) {
+    final timeFormat = DateFormat('MMM dd, hh:mm a');
+    final isToday =
+        res.reservationTime.day == DateTime.now().day &&
+        res.reservationTime.month == DateTime.now().month &&
+        res.reservationTime.year == DateTime.now().year;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey[100]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Table ${res.tableNumber}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              _buildStatusBadge(res.status),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            res.customerName,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Icon(Icons.people_outline, size: 14, color: Colors.grey[500]),
+              const SizedBox(width: 4),
+              Text(
+                '${res.guestCount} guests',
+                style: TextStyle(color: Colors.grey[500], fontSize: 13),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Row(
+            children: [
+              Icon(
+                Icons.access_time,
+                size: 14,
+                color: isToday ? Colors.blue : Colors.grey,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                timeFormat.format(res.reservationTime),
+                style: TextStyle(
+                  color: isToday ? Colors.blue : Colors.grey[600],
+                  fontSize: 12,
+                  fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => _showReservationDialog(reservation: res),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('Edit'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: () => _confirmDeleteReservation(res),
+                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.red[50],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(String status) {
+    Color color;
+    switch (status) {
+      case 'Confirmed':
+        color = Colors.green;
+      case 'Cancelled':
+        color = Colors.red;
+      case 'Completed':
+        color = Colors.blue;
+      default:
+        color = Colors.orange;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showReservationDialog({Reservation? reservation}) async {
+    final isEditing = reservation != null;
+    final nameController = TextEditingController(
+      text: reservation?.customerName,
+    );
+    final phoneController = TextEditingController(
+      text: reservation?.customerPhone,
+    );
+    final tableController = TextEditingController(
+      text: reservation?.tableNumber,
+    );
+    final guestController = TextEditingController(
+      text: reservation?.guestCount.toString() ?? '2',
+    );
+    DateTime selectedDate = reservation?.reservationTime ?? DateTime.now();
+    TimeOfDay selectedTime = TimeOfDay.fromDateTime(selectedDate);
+    String status = reservation?.status ?? 'Pending';
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(isEditing ? 'Edit Reservation' : 'New Reservation'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Customer Name'),
+                ),
+                TextField(
+                  controller: phoneController,
+                  decoration: const InputDecoration(
+                    labelText: 'Phone (Optional)',
+                  ),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: tableController,
+                        decoration: const InputDecoration(
+                          labelText: 'Table No',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextField(
+                        controller: guestController,
+                        decoration: const InputDecoration(labelText: 'Guests'),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  title: const Text('Date'),
+                  subtitle: Text(DateFormat('yyyy-MM-dd').format(selectedDate)),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => selectedDate = picked);
+                    }
+                  },
+                ),
+                ListTile(
+                  title: const Text('Time'),
+                  subtitle: Text(selectedTime.format(context)),
+                  trailing: const Icon(Icons.access_time),
+                  onTap: () async {
+                    final picked = await showTimePicker(
+                      context: context,
+                      initialTime: selectedTime,
+                    );
+                    if (picked != null) {
+                      setDialogState(() => selectedTime = picked);
+                    }
+                  },
+                ),
+                if (isEditing)
+                  DropdownButtonFormField<String>(
+                    initialValue: status,
+                    decoration: const InputDecoration(labelText: 'Status'),
+                    items: ['Pending', 'Confirmed', 'Cancelled', 'Completed']
+                        .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                        .toList(),
+                    onChanged: (val) => setDialogState(() => status = val!),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0F172A),
+              ),
+              child: Text(
+                isEditing ? 'Save Changes' : 'Create',
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == true) {
+      final finalDateTime = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        selectedTime.hour,
+        selectedTime.minute,
+      );
+
+      final res = Reservation(
+        id: reservation?.id,
+        customerName: nameController.text,
+        customerPhone: phoneController.text,
+        tableNumber: tableController.text,
+        guestCount: int.tryParse(guestController.text) ?? 2,
+        reservationTime: finalDateTime,
+        status: status,
+        createdAt: reservation?.createdAt ?? DateTime.now(),
+      );
+
+      try {
+        if (isEditing) {
+          await client.reservations.update(res);
+        } else {
+          await client.reservations.create(res);
+        }
+        _loadDataQuietly();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error saving reservation: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _confirmDeleteReservation(Reservation res) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel Reservation?'),
+        content: Text(
+          'Are you sure you want to cancel the reservation for ${res.customerName}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Yes, Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await client.reservations.delete(res.id!);
+        _loadDataQuietly();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error cancelling reservation: $e')),
+          );
+        }
+      }
+    }
   }
 
   Widget _buildTakeawayCard(PosOrder order) {
@@ -351,6 +836,14 @@ class _TablesViewState extends State<TablesView> {
     final orders = tableOrders[table.tableNumber] ?? [];
     final isActive = orders.isNotEmpty;
     final totalAmount = orders.fold(0.0, (sum, o) => sum + o.total);
+    final splitOrder = orders
+        .where(
+          (o) => o.remainingSplitCount != null && o.remainingSplitCount! > 0,
+        )
+        .firstOrNull;
+    final scheduledOrder = orders
+        .where((o) => o.status == 'Scheduled')
+        .firstOrNull;
 
     String duration = '0m';
     if (isActive) {
@@ -404,23 +897,64 @@ class _TablesViewState extends State<TablesView> {
                   ),
                 ),
                 if (isActive)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF59E0B),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      'Active',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                  Row(
+                    children: [
+                      if (splitOrder != null)
+                        Container(
+                          margin: const EdgeInsets.only(right: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[100],
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '${splitOrder.remainingSplitCount} left',
+                            style: TextStyle(
+                              color: Colors.orange[900],
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      if (scheduledOrder != null)
+                        Container(
+                          margin: const EdgeInsets.only(right: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[100],
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Icon(
+                            Icons.schedule_rounded,
+                            size: 10,
+                            color: Colors.blue,
+                          ),
+                        ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF59E0B),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'Active',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
               ],
             ),
@@ -487,10 +1021,22 @@ class _TablesViewState extends State<TablesView> {
             child: _TableDetailsSidebar(
               table: table,
               orders: orders,
+              reservations: reservations
+                  .where((r) => r.tableNumber == table.tableNumber)
+                  .toList(),
               onUpdate: _loadDataQuietly,
               onAddItems: widget.onAddItems,
               onSplit: (t, o) => _showSplitItemsDialog(context, t, o),
               onMerge: (t) => _showMergeTableDialog(context, t),
+              onAddReservation: () => _showReservationDialog(
+                reservation: Reservation(
+                  tableNumber: table.tableNumber,
+                  customerName: '',
+                  reservationTime: DateTime.now().add(const Duration(hours: 1)),
+                  guestCount: 2,
+                  createdAt: DateTime.now(),
+                ),
+              ),
               onCheckout: () {
                 Navigator.pop(context); // Close sidebar
                 if (widget.onCheckout != null) {
@@ -802,237 +1348,476 @@ class _TablesViewState extends State<TablesView> {
 class _TableDetailsSidebar extends StatelessWidget {
   final RestaurantTable table;
   final List<PosOrder> orders;
+  final List<Reservation> reservations;
   final VoidCallback onUpdate;
   final Function(String)? onAddItems;
   final Function(RestaurantTable, List<PosOrder>) onSplit;
   final Function(RestaurantTable) onMerge;
+  final VoidCallback onAddReservation;
   final VoidCallback onCheckout;
 
   const _TableDetailsSidebar({
     required this.table,
     required this.orders,
+    required this.reservations,
     required this.onUpdate,
     this.onAddItems,
     required this.onSplit,
     required this.onMerge,
+    required this.onAddReservation,
     required this.onCheckout,
   });
+
+  Future<void> _updateNif(BuildContext context, String nif) async {
+    if (orders.isEmpty) return;
+    try {
+      // Update all orders for this table with the same NIF
+      for (final order in orders) {
+        await client.orders.update(order.copyWith(taxNumber: nif));
+      }
+      onUpdate();
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error updating NIF: $e')));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final totalAmount = orders.fold(0.0, (sum, o) => sum + o.total);
     final isActive = orders.isNotEmpty;
+    final firstOrderWithNif = orders
+        .where((o) => o.taxNumber != null && o.taxNumber!.isNotEmpty)
+        .firstOrNull;
+    final firstOrderWithSplit = orders
+        .where(
+          (o) => o.remainingSplitCount != null && o.remainingSplitCount! > 0,
+        )
+        .firstOrNull;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
         backgroundColor: Colors.white,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  'Table ${table.tableNumber}',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                const Spacer(),
-                if (isActive)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'Table ${table.tableNumber}',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
                       color: Colors.black,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      'ordered',
-                      style: TextStyle(color: Colors.white, fontSize: 12),
                     ),
                   ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
+                  const Spacer(),
+                  if (firstOrderWithSplit != null)
+                    Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${firstOrderWithSplit.remainingSplitCount} left',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  if (isActive)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'ordered',
+                        style: TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              if (firstOrderWithNif != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.description_outlined,
+                        size: 14,
+                        color: Colors.blue,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'NIF: ${firstOrderWithNif.taxNumber}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.blue,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                const Text(
+                  'Manage orders and table status',
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
                 ),
-              ],
-            ),
-            const Text(
-              'Manage orders and table status',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-            ),
+            ],
+          ),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Orders'),
+              Tab(text: 'Reservations'),
+            ],
+            labelColor: Colors.black,
+            indicatorColor: Colors.black,
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            _buildOrdersTab(context, isActive, firstOrderWithNif, totalAmount),
+            _buildReservationsTab(context),
           ],
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Divider(),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                // Navigate to New Order with this table pre-selected
-                Navigator.pop(context);
-                if (onAddItems != null) {
-                  onAddItems!(table.tableNumber);
-                }
-              },
-              icon: const Icon(Icons.add, color: Colors.white),
-              label: const Text(
-                'Add Items',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                minimumSize: const Size(double.infinity, 56),
-                shape: RoundedRectangleBorder(
+    );
+  }
+
+  Widget _buildOrdersTab(
+    BuildContext context,
+    bool isActive,
+    PosOrder? firstOrderWithNif,
+    double totalAmount,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (isActive) ...[
+            const Text(
+              'Order Information',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              decoration: InputDecoration(
+                labelText: 'NIF (Tax Number)',
+                hintText: 'Enter NIF',
+                prefixIcon: const Icon(Icons.description_outlined),
+                border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => onSplit(table, orders),
-                    icon: const Icon(
-                      Icons.table_rows_outlined,
-                      color: Colors.black,
-                    ),
-                    label: const Text(
-                      'Split Table',
-                      style: TextStyle(color: Colors.black),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => onMerge(table),
-                    icon: const Icon(Icons.merge_type, color: Colors.black),
-                    label: const Text(
-                      'Merge',
-                      style: TextStyle(color: Colors.black),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-            Row(
-              children: [
-                const Icon(
-                  Icons.restaurant_outlined,
-                  size: 20,
-                  color: Colors.grey,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Current Orders',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const Spacer(),
-                Text(
-                  '${orders.length} active',
-                  style: const TextStyle(color: Colors.grey),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: orders.isEmpty
-                  ? const Center(child: Text('No active orders'))
-                  : ListView.builder(
-                      itemCount: orders.length,
-                      itemBuilder: (context, index) =>
-                          _buildOrderItems(orders[index]),
-                    ),
-            ),
-            const Divider(),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Total Amount',
-                  style: TextStyle(color: Colors.grey, fontSize: 16),
-                ),
-                Text(
-                  '€${totalAmount.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+              controller: TextEditingController(
+                text: firstOrderWithNif?.taxNumber,
+              ),
+              onSubmitted: (val) => _updateNif(context, val),
+              keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.print_outlined, color: Colors.red),
-                    label: const Text(
-                      'Print Bill',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      side: const BorderSide(color: Color(0xFFFEE2E2)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: isActive ? onCheckout : null,
-                    icon: const Icon(Icons.arrow_forward, color: Colors.white),
-                    label: const Text(
-                      'Checkout',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF10B981),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ],
-        ),
+          ElevatedButton.icon(
+            onPressed: () {
+              // Navigate to New Order with this table pre-selected
+              Navigator.pop(context);
+              if (onAddItems != null) {
+                onAddItems!(table.tableNumber);
+              }
+            },
+            icon: const Icon(Icons.add, color: Colors.white),
+            label: const Text(
+              'Add Items',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              minimumSize: const Size(double.infinity, 56),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => onSplit(table, orders),
+                  icon: const Icon(
+                    Icons.table_rows_outlined,
+                    color: Colors.black,
+                  ),
+                  label: const Text(
+                    'Split Table',
+                    style: TextStyle(color: Colors.black),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => onMerge(table),
+                  icon: const Icon(Icons.merge_type, color: Colors.black),
+                  label: const Text(
+                    'Merge',
+                    style: TextStyle(color: Colors.black),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+          Row(
+            children: [
+              const Icon(
+                Icons.restaurant_outlined,
+                size: 20,
+                color: Colors.grey,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Current Orders',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              Text(
+                '${orders.length} active',
+                style: const TextStyle(color: Colors.grey),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: orders.isEmpty
+                ? const Center(child: Text('No active orders'))
+                : ListView.builder(
+                    itemCount: orders.length,
+                    itemBuilder: (context, index) =>
+                        _buildOrderItems(orders[index]),
+                  ),
+          ),
+          const Divider(),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Total Amount',
+                style: TextStyle(color: Colors.grey, fontSize: 16),
+              ),
+              Text(
+                '€${totalAmount.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.print_outlined, color: Colors.red),
+                  label: const Text(
+                    'Print Bill',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    side: const BorderSide(color: Color(0xFFFEE2E2)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: isActive ? onCheckout : null,
+                  icon: const Icon(Icons.arrow_forward, color: Colors.white),
+                  label: const Text(
+                    'Checkout',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReservationsTab(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Reservations',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              TextButton.icon(
+                onPressed: onAddReservation,
+                icon: const Icon(Icons.add),
+                label: const Text('New'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: reservations.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.event_note_outlined,
+                          size: 48,
+                          color: Colors.grey[300],
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'No upcoming reservations',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: reservations.length,
+                    itemBuilder: (context, index) {
+                      final res = reservations[index];
+                      final timeFormat = DateFormat('MMM dd, hh:mm a');
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[200]!),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  res.customerName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue[50],
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    res.status,
+                                    style: TextStyle(
+                                      color: Colors.blue[900],
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${res.guestCount} guests',
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.access_time,
+                                  size: 14,
+                                  color: Colors.grey,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  timeFormat.format(res.reservationTime),
+                                  style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }

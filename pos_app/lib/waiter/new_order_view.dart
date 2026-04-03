@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:pos_server_client/pos_server_client.dart';
 import '../main.dart';
 
@@ -22,6 +23,7 @@ class _NewOrderViewState extends State<NewOrderView> {
   List<Product> allProducts = [];
   List<Category> categories = [];
   int? selectedCategoryId;
+  DateTime? _scheduledTime;
   bool isLoading = true;
   StreamSubscription? _subscription;
 
@@ -148,12 +150,14 @@ class _NewOrderViewState extends State<NewOrderView> {
         null, // Server will generate order code automatically
         'Current Waiter', // In real app, get from auth
         orderItems,
+        scheduledTime: _scheduledTime,
       );
 
       if (mounted) {
         setState(() {
           cart.clear();
           _tableController.clear();
+          _scheduledTime = null;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -262,8 +266,76 @@ class _NewOrderViewState extends State<NewOrderView> {
             ),
           ),
         ],
+        const SizedBox(width: 16),
+        _buildScheduleButton(),
       ],
     );
+  }
+
+  Widget _buildScheduleButton() {
+    return InkWell(
+      onTap: _selectScheduleTime,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: _scheduledTime != null
+              ? const Color(0xFF0F172A)
+              : const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.access_time_rounded,
+              size: 20,
+              color: _scheduledTime != null ? Colors.white : Colors.grey[600],
+            ),
+            const SizedBox(width: 8),
+            Text(
+              _scheduledTime == null
+                  ? 'Schedule'
+                  : DateFormat('HH:mm').format(_scheduledTime!),
+              style: TextStyle(
+                color: _scheduledTime != null ? Colors.white : Colors.grey[600],
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (_scheduledTime != null) ...[
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => setState(() => _scheduledTime = null),
+                child: const Icon(Icons.close, size: 16, color: Colors.white),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _selectScheduleTime() async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+
+    if (picked != null) {
+      final now = DateTime.now();
+      setState(() {
+        _scheduledTime = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          picked.hour,
+          picked.minute,
+        );
+        // If the time is in the past, assume it's for tomorrow
+        if (_scheduledTime!.isBefore(now)) {
+          _scheduledTime = _scheduledTime!.add(const Duration(days: 1));
+        }
+      });
+    }
   }
 
   Widget _buildTypeBtn(String type) {

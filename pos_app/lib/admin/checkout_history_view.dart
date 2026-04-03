@@ -40,6 +40,143 @@ class _CheckoutHistoryViewState extends State<CheckoutHistoryView> {
     }
   }
 
+  Future<void> _showBillDetails(Bill bill) async {
+    showDialog(
+      context: context,
+      builder: (context) => FutureBuilder<BillWithItems>(
+        future: client.checkout.getDetails(bill.id!),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return AlertDialog(
+              title: const Text('Error'),
+              content: Text(snapshot.error.toString()),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          }
+
+          final detailedBill = snapshot.data!.bill;
+          final billItems = snapshot.data!.items;
+          final dateFormat = DateFormat('MMM dd, yyyy - hh:mm a');
+
+          return AlertDialog(
+            title: Row(
+              children: [
+                const Icon(Icons.receipt_long_outlined, color: Colors.blue),
+                const SizedBox(width: 12),
+                Text(
+                  'Receipt #${detailedBill.billNumber.substring(detailedBill.billNumber.length - 6)}',
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 400,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Date: ${detailedBill.createdAt != null ? dateFormat.format(detailedBill.createdAt!) : 'N/A'}',
+                    ),
+                    Text('Waiter: ${detailedBill.waiterName ?? 'System'}'),
+                    Text('Table: ${detailedBill.tableNo ?? 'Takeaway'}'),
+                    Text('Payment Method: ${detailedBill.paymentMethod}'),
+                    if (detailedBill.taxNumber != null)
+                      Text(
+                        'NIF: ${detailedBill.taxNumber}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    const Divider(height: 32),
+                    const Text(
+                      'Items:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    if (billItems.isNotEmpty)
+                      ...billItems.map(
+                        (item) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${item.quantity}x ${item.productName ?? 'Unknown'}',
+                                ),
+                              ),
+                              Text('€${item.totalPrice.toStringAsFixed(2)}'),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      const Text(
+                        'No item details available',
+                        style: TextStyle(
+                          fontStyle: FontStyle.italic,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    const Divider(height: 32),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Subtotal:'),
+                        Text('€${detailedBill.subtotal.toStringAsFixed(2)}'),
+                      ],
+                    ),
+                    if (detailedBill.taxAmount > 0)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Tax:'),
+                          Text('€${detailedBill.taxAmount.toStringAsFixed(2)}'),
+                        ],
+                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Total:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        Text(
+                          '€${detailedBill.total.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -142,6 +279,9 @@ class _CheckoutHistoryViewState extends State<CheckoutHistoryView> {
               ),
             ),
             DataColumn(
+              label: Text('NIF', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+            DataColumn(
               label: Text(
                 'Amount',
                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -191,13 +331,23 @@ class _CheckoutHistoryViewState extends State<CheckoutHistoryView> {
                     ),
                     DataCell(
                       Text(
+                        bill.taxNumber ?? '-',
+                        style: TextStyle(
+                          color: bill.taxNumber != null
+                              ? Colors.black
+                              : Colors.grey[300],
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      Text(
                         '€${bill.total.toStringAsFixed(2)}',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                     DataCell(
                       IconButton(
-                        onPressed: () {},
+                        onPressed: () => _showBillDetails(bill),
                         icon: const Icon(Icons.receipt_outlined, size: 20),
                         tooltip: 'View Receipt',
                       ),

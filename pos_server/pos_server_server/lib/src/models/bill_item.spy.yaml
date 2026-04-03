@@ -1,0 +1,11 @@
+class: BillItem
+table: bill_items
+fields:
+  billId: int
+  productName: String?
+  quantity: int
+  price: double
+  totalPrice: double, default=0
+indexes:
+  bill_items_bill_idx:
+    fields: billId

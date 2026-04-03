@@ -17,27 +17,36 @@ import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
 import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
     as _i4;
 import 'bill.dart' as _i5;
-import 'category.dart' as _i6;
-import 'greetings/greeting.dart' as _i7;
-import 'order.dart' as _i8;
-import 'order_item.dart' as _i9;
-import 'pos_event.dart' as _i10;
-import 'pos_user.dart' as _i11;
-import 'product.dart' as _i12;
-import 'product_extra.dart' as _i13;
-import 'restaurant_table.dart' as _i14;
-import 'settings.dart' as _i15;
-import 'subcategory.dart' as _i16;
-import 'package:pos_server_server/src/generated/category.dart' as _i17;
-import 'package:pos_server_server/src/generated/bill.dart' as _i18;
-import 'package:pos_server_server/src/generated/order.dart' as _i19;
-import 'package:pos_server_server/src/generated/order_item.dart' as _i20;
-import 'package:pos_server_server/src/generated/product.dart' as _i21;
-import 'package:pos_server_server/src/generated/subcategory.dart' as _i22;
-import 'package:pos_server_server/src/generated/restaurant_table.dart' as _i23;
-import 'package:pos_server_server/src/generated/pos_user.dart' as _i24;
+import 'bill_item.dart' as _i6;
+import 'bill_with_items.dart' as _i7;
+import 'category.dart' as _i8;
+import 'checkout_item.dart' as _i9;
+import 'greetings/greeting.dart' as _i10;
+import 'order.dart' as _i11;
+import 'order_item.dart' as _i12;
+import 'pos_event.dart' as _i13;
+import 'pos_user.dart' as _i14;
+import 'product.dart' as _i15;
+import 'product_extra.dart' as _i16;
+import 'reservation.dart' as _i17;
+import 'restaurant_table.dart' as _i18;
+import 'settings.dart' as _i19;
+import 'subcategory.dart' as _i20;
+import 'package:pos_server_server/src/generated/category.dart' as _i21;
+import 'package:pos_server_server/src/generated/checkout_item.dart' as _i22;
+import 'package:pos_server_server/src/generated/bill.dart' as _i23;
+import 'package:pos_server_server/src/generated/order.dart' as _i24;
+import 'package:pos_server_server/src/generated/order_item.dart' as _i25;
+import 'package:pos_server_server/src/generated/product.dart' as _i26;
+import 'package:pos_server_server/src/generated/reservation.dart' as _i27;
+import 'package:pos_server_server/src/generated/subcategory.dart' as _i28;
+import 'package:pos_server_server/src/generated/restaurant_table.dart' as _i29;
+import 'package:pos_server_server/src/generated/pos_user.dart' as _i30;
 export 'bill.dart';
+export 'bill_item.dart';
+export 'bill_with_items.dart';
 export 'category.dart';
+export 'checkout_item.dart';
 export 'greetings/greeting.dart';
 export 'order.dart';
 export 'order_item.dart';
@@ -45,6 +54,7 @@ export 'pos_event.dart';
 export 'pos_user.dart';
 export 'product.dart';
 export 'product_extra.dart';
+export 'reservation.dart';
 export 'restaurant_table.dart';
 export 'settings.dart';
 export 'subcategory.dart';
@@ -57,6 +67,82 @@ class Protocol extends _i1.SerializationManagerServer {
   static final Protocol _instance = Protocol._();
 
   static final List<_i2.TableDefinition> targetTableDefinitions = [
+    _i2.TableDefinition(
+      name: 'bill_items',
+      dartName: 'BillItem',
+      schema: 'public',
+      module: 'pos_server',
+      columns: [
+        _i2.ColumnDefinition(
+          name: 'id',
+          columnType: _i2.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'nextval(\'bill_items_id_seq\'::regclass)',
+        ),
+        _i2.ColumnDefinition(
+          name: 'billId',
+          columnType: _i2.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _i2.ColumnDefinition(
+          name: 'productName',
+          columnType: _i2.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _i2.ColumnDefinition(
+          name: 'quantity',
+          columnType: _i2.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _i2.ColumnDefinition(
+          name: 'price',
+          columnType: _i2.ColumnType.doublePrecision,
+          isNullable: false,
+          dartType: 'double',
+        ),
+        _i2.ColumnDefinition(
+          name: 'totalPrice',
+          columnType: _i2.ColumnType.doublePrecision,
+          isNullable: false,
+          dartType: 'double',
+          columnDefault: '0',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [
+        _i2.IndexDefinition(
+          indexName: 'bill_items_pkey',
+          tableSpace: null,
+          elements: [
+            _i2.IndexElementDefinition(
+              type: _i2.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: true,
+        ),
+        _i2.IndexDefinition(
+          indexName: 'bill_items_bill_idx',
+          tableSpace: null,
+          elements: [
+            _i2.IndexElementDefinition(
+              type: _i2.IndexElementDefinitionType.column,
+              definition: 'billId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
     _i2.TableDefinition(
       name: 'bills',
       dartName: 'Bill',
@@ -388,6 +474,12 @@ class Protocol extends _i1.SerializationManagerServer {
           dartType: 'String?',
         ),
         _i2.ColumnDefinition(
+          name: 'taxNumber',
+          columnType: _i2.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _i2.ColumnDefinition(
           name: 'subtotal',
           columnType: _i2.ColumnType.doublePrecision,
           isNullable: false,
@@ -420,6 +512,24 @@ class Protocol extends _i1.SerializationManagerServer {
           columnType: _i2.ColumnType.doublePrecision,
           isNullable: false,
           dartType: 'double',
+        ),
+        _i2.ColumnDefinition(
+          name: 'initialSplitCount',
+          columnType: _i2.ColumnType.bigint,
+          isNullable: true,
+          dartType: 'int?',
+        ),
+        _i2.ColumnDefinition(
+          name: 'remainingSplitCount',
+          columnType: _i2.ColumnType.bigint,
+          isNullable: true,
+          dartType: 'int?',
+        ),
+        _i2.ColumnDefinition(
+          name: 'scheduledTime',
+          columnType: _i2.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
         ),
         _i2.ColumnDefinition(
           name: 'createdAt',
@@ -732,6 +842,104 @@ class Protocol extends _i1.SerializationManagerServer {
       managed: true,
     ),
     _i2.TableDefinition(
+      name: 'reservations',
+      dartName: 'Reservation',
+      schema: 'public',
+      module: 'pos_server',
+      columns: [
+        _i2.ColumnDefinition(
+          name: 'id',
+          columnType: _i2.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'nextval(\'reservations_id_seq\'::regclass)',
+        ),
+        _i2.ColumnDefinition(
+          name: 'tableNumber',
+          columnType: _i2.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _i2.ColumnDefinition(
+          name: 'customerName',
+          columnType: _i2.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _i2.ColumnDefinition(
+          name: 'customerPhone',
+          columnType: _i2.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _i2.ColumnDefinition(
+          name: 'reservationTime',
+          columnType: _i2.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _i2.ColumnDefinition(
+          name: 'guestCount',
+          columnType: _i2.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _i2.ColumnDefinition(
+          name: 'status',
+          columnType: _i2.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+          columnDefault: '\'Pending\'::text',
+        ),
+        _i2.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _i2.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _i2.ColumnDefinition(
+          name: 'updatedAt',
+          columnType: _i2.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [
+        _i2.IndexDefinition(
+          indexName: 'reservations_pkey',
+          tableSpace: null,
+          elements: [
+            _i2.IndexElementDefinition(
+              type: _i2.IndexElementDefinitionType.column,
+              definition: 'id',
+            ),
+          ],
+          type: 'btree',
+          isUnique: true,
+          isPrimary: true,
+        ),
+        _i2.IndexDefinition(
+          indexName: 'reservations_table_time_idx',
+          tableSpace: null,
+          elements: [
+            _i2.IndexElementDefinition(
+              type: _i2.IndexElementDefinitionType.column,
+              definition: 'tableNumber',
+            ),
+            _i2.IndexElementDefinition(
+              type: _i2.IndexElementDefinitionType.column,
+              definition: 'reservationTime',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
+    _i2.TableDefinition(
       name: 'restaurant_tables',
       dartName: 'RestaurantTable',
       schema: 'public',
@@ -969,114 +1177,156 @@ class Protocol extends _i1.SerializationManagerServer {
     if (t == _i5.Bill) {
       return _i5.Bill.fromJson(data) as T;
     }
-    if (t == _i6.Category) {
-      return _i6.Category.fromJson(data) as T;
+    if (t == _i6.BillItem) {
+      return _i6.BillItem.fromJson(data) as T;
     }
-    if (t == _i7.Greeting) {
-      return _i7.Greeting.fromJson(data) as T;
+    if (t == _i7.BillWithItems) {
+      return _i7.BillWithItems.fromJson(data) as T;
     }
-    if (t == _i8.PosOrder) {
-      return _i8.PosOrder.fromJson(data) as T;
+    if (t == _i8.Category) {
+      return _i8.Category.fromJson(data) as T;
     }
-    if (t == _i9.OrderItem) {
-      return _i9.OrderItem.fromJson(data) as T;
+    if (t == _i9.CheckoutItem) {
+      return _i9.CheckoutItem.fromJson(data) as T;
     }
-    if (t == _i10.PosEvent) {
-      return _i10.PosEvent.fromJson(data) as T;
+    if (t == _i10.Greeting) {
+      return _i10.Greeting.fromJson(data) as T;
     }
-    if (t == _i11.PosUser) {
-      return _i11.PosUser.fromJson(data) as T;
+    if (t == _i11.PosOrder) {
+      return _i11.PosOrder.fromJson(data) as T;
     }
-    if (t == _i12.Product) {
-      return _i12.Product.fromJson(data) as T;
+    if (t == _i12.OrderItem) {
+      return _i12.OrderItem.fromJson(data) as T;
     }
-    if (t == _i13.ProductExtra) {
-      return _i13.ProductExtra.fromJson(data) as T;
+    if (t == _i13.PosEvent) {
+      return _i13.PosEvent.fromJson(data) as T;
     }
-    if (t == _i14.RestaurantTable) {
-      return _i14.RestaurantTable.fromJson(data) as T;
+    if (t == _i14.PosUser) {
+      return _i14.PosUser.fromJson(data) as T;
     }
-    if (t == _i15.Settings) {
-      return _i15.Settings.fromJson(data) as T;
+    if (t == _i15.Product) {
+      return _i15.Product.fromJson(data) as T;
     }
-    if (t == _i16.Subcategory) {
-      return _i16.Subcategory.fromJson(data) as T;
+    if (t == _i16.ProductExtra) {
+      return _i16.ProductExtra.fromJson(data) as T;
+    }
+    if (t == _i17.Reservation) {
+      return _i17.Reservation.fromJson(data) as T;
+    }
+    if (t == _i18.RestaurantTable) {
+      return _i18.RestaurantTable.fromJson(data) as T;
+    }
+    if (t == _i19.Settings) {
+      return _i19.Settings.fromJson(data) as T;
+    }
+    if (t == _i20.Subcategory) {
+      return _i20.Subcategory.fromJson(data) as T;
     }
     if (t == _i1.getType<_i5.Bill?>()) {
       return (data != null ? _i5.Bill.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i6.Category?>()) {
-      return (data != null ? _i6.Category.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i6.BillItem?>()) {
+      return (data != null ? _i6.BillItem.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i7.Greeting?>()) {
-      return (data != null ? _i7.Greeting.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i7.BillWithItems?>()) {
+      return (data != null ? _i7.BillWithItems.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i8.PosOrder?>()) {
-      return (data != null ? _i8.PosOrder.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i8.Category?>()) {
+      return (data != null ? _i8.Category.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i9.OrderItem?>()) {
-      return (data != null ? _i9.OrderItem.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i9.CheckoutItem?>()) {
+      return (data != null ? _i9.CheckoutItem.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i10.PosEvent?>()) {
-      return (data != null ? _i10.PosEvent.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i10.Greeting?>()) {
+      return (data != null ? _i10.Greeting.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i11.PosUser?>()) {
-      return (data != null ? _i11.PosUser.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i11.PosOrder?>()) {
+      return (data != null ? _i11.PosOrder.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i12.Product?>()) {
-      return (data != null ? _i12.Product.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i12.OrderItem?>()) {
+      return (data != null ? _i12.OrderItem.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i13.ProductExtra?>()) {
-      return (data != null ? _i13.ProductExtra.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i13.PosEvent?>()) {
+      return (data != null ? _i13.PosEvent.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i14.RestaurantTable?>()) {
-      return (data != null ? _i14.RestaurantTable.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i14.PosUser?>()) {
+      return (data != null ? _i14.PosUser.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i15.Settings?>()) {
-      return (data != null ? _i15.Settings.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i15.Product?>()) {
+      return (data != null ? _i15.Product.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i16.Subcategory?>()) {
-      return (data != null ? _i16.Subcategory.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i16.ProductExtra?>()) {
+      return (data != null ? _i16.ProductExtra.fromJson(data) : null) as T;
     }
-    if (t == List<_i9.OrderItem>) {
-      return (data as List).map((e) => deserialize<_i9.OrderItem>(e)).toList()
+    if (t == _i1.getType<_i17.Reservation?>()) {
+      return (data != null ? _i17.Reservation.fromJson(data) : null) as T;
+    }
+    if (t == _i1.getType<_i18.RestaurantTable?>()) {
+      return (data != null ? _i18.RestaurantTable.fromJson(data) : null) as T;
+    }
+    if (t == _i1.getType<_i19.Settings?>()) {
+      return (data != null ? _i19.Settings.fromJson(data) : null) as T;
+    }
+    if (t == _i1.getType<_i20.Subcategory?>()) {
+      return (data != null ? _i20.Subcategory.fromJson(data) : null) as T;
+    }
+    if (t == List<_i6.BillItem>) {
+      return (data as List).map((e) => deserialize<_i6.BillItem>(e)).toList()
           as T;
     }
-    if (t == _i1.getType<List<_i9.OrderItem>?>()) {
+    if (t == List<_i12.OrderItem>) {
+      return (data as List).map((e) => deserialize<_i12.OrderItem>(e)).toList()
+          as T;
+    }
+    if (t == _i1.getType<List<_i12.OrderItem>?>()) {
       return (data != null
               ? (data as List)
-                    .map((e) => deserialize<_i9.OrderItem>(e))
+                    .map((e) => deserialize<_i12.OrderItem>(e))
                     .toList()
               : null)
           as T;
     }
-    if (t == List<_i13.ProductExtra>) {
+    if (t == List<_i16.ProductExtra>) {
       return (data as List)
-              .map((e) => deserialize<_i13.ProductExtra>(e))
+              .map((e) => deserialize<_i16.ProductExtra>(e))
               .toList()
           as T;
     }
-    if (t == _i1.getType<List<_i13.ProductExtra>?>()) {
+    if (t == _i1.getType<List<_i16.ProductExtra>?>()) {
       return (data != null
               ? (data as List)
-                    .map((e) => deserialize<_i13.ProductExtra>(e))
+                    .map((e) => deserialize<_i16.ProductExtra>(e))
                     .toList()
               : null)
           as T;
     }
-    if (t == List<_i17.Category>) {
-      return (data as List).map((e) => deserialize<_i17.Category>(e)).toList()
+    if (t == List<_i21.Category>) {
+      return (data as List).map((e) => deserialize<_i21.Category>(e)).toList()
           as T;
     }
-    if (t == List<_i18.Bill>) {
-      return (data as List).map((e) => deserialize<_i18.Bill>(e)).toList() as T;
-    }
-    if (t == List<_i19.PosOrder>) {
-      return (data as List).map((e) => deserialize<_i19.PosOrder>(e)).toList()
+    if (t == List<_i22.CheckoutItem>) {
+      return (data as List)
+              .map((e) => deserialize<_i22.CheckoutItem>(e))
+              .toList()
           as T;
     }
-    if (t == List<_i20.OrderItem>) {
-      return (data as List).map((e) => deserialize<_i20.OrderItem>(e)).toList()
+    if (t == _i1.getType<List<_i22.CheckoutItem>?>()) {
+      return (data != null
+              ? (data as List)
+                    .map((e) => deserialize<_i22.CheckoutItem>(e))
+                    .toList()
+              : null)
+          as T;
+    }
+    if (t == List<_i23.Bill>) {
+      return (data as List).map((e) => deserialize<_i23.Bill>(e)).toList() as T;
+    }
+    if (t == List<_i24.PosOrder>) {
+      return (data as List).map((e) => deserialize<_i24.PosOrder>(e)).toList()
+          as T;
+    }
+    if (t == List<_i25.OrderItem>) {
+      return (data as List).map((e) => deserialize<_i25.OrderItem>(e)).toList()
           as T;
     }
     if (t == List<Map<String, dynamic>>) {
@@ -1091,27 +1341,33 @@ class Protocol extends _i1.SerializationManagerServer {
           )
           as T;
     }
-    if (t == List<_i21.Product>) {
-      return (data as List).map((e) => deserialize<_i21.Product>(e)).toList()
+    if (t == List<_i26.Product>) {
+      return (data as List).map((e) => deserialize<_i26.Product>(e)).toList()
           as T;
     }
-    if (t == List<_i22.Subcategory>) {
+    if (t == List<_i27.Reservation>) {
       return (data as List)
-              .map((e) => deserialize<_i22.Subcategory>(e))
+              .map((e) => deserialize<_i27.Reservation>(e))
               .toList()
           as T;
     }
-    if (t == List<_i23.RestaurantTable>) {
+    if (t == List<_i28.Subcategory>) {
       return (data as List)
-              .map((e) => deserialize<_i23.RestaurantTable>(e))
+              .map((e) => deserialize<_i28.Subcategory>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_i29.RestaurantTable>) {
+      return (data as List)
+              .map((e) => deserialize<_i29.RestaurantTable>(e))
               .toList()
           as T;
     }
     if (t == List<int>) {
       return (data as List).map((e) => deserialize<int>(e)).toList() as T;
     }
-    if (t == List<_i24.PosUser>) {
-      return (data as List).map((e) => deserialize<_i24.PosUser>(e)).toList()
+    if (t == List<_i30.PosUser>) {
+      return (data as List).map((e) => deserialize<_i30.PosUser>(e)).toList()
           as T;
     }
     try {
@@ -1129,17 +1385,21 @@ class Protocol extends _i1.SerializationManagerServer {
   static String? getClassNameForType(Type type) {
     return switch (type) {
       _i5.Bill => 'Bill',
-      _i6.Category => 'Category',
-      _i7.Greeting => 'Greeting',
-      _i8.PosOrder => 'PosOrder',
-      _i9.OrderItem => 'OrderItem',
-      _i10.PosEvent => 'PosEvent',
-      _i11.PosUser => 'PosUser',
-      _i12.Product => 'Product',
-      _i13.ProductExtra => 'ProductExtra',
-      _i14.RestaurantTable => 'RestaurantTable',
-      _i15.Settings => 'Settings',
-      _i16.Subcategory => 'Subcategory',
+      _i6.BillItem => 'BillItem',
+      _i7.BillWithItems => 'BillWithItems',
+      _i8.Category => 'Category',
+      _i9.CheckoutItem => 'CheckoutItem',
+      _i10.Greeting => 'Greeting',
+      _i11.PosOrder => 'PosOrder',
+      _i12.OrderItem => 'OrderItem',
+      _i13.PosEvent => 'PosEvent',
+      _i14.PosUser => 'PosUser',
+      _i15.Product => 'Product',
+      _i16.ProductExtra => 'ProductExtra',
+      _i17.Reservation => 'Reservation',
+      _i18.RestaurantTable => 'RestaurantTable',
+      _i19.Settings => 'Settings',
+      _i20.Subcategory => 'Subcategory',
       _ => null,
     };
   }
@@ -1156,27 +1416,35 @@ class Protocol extends _i1.SerializationManagerServer {
     switch (data) {
       case _i5.Bill():
         return 'Bill';
-      case _i6.Category():
+      case _i6.BillItem():
+        return 'BillItem';
+      case _i7.BillWithItems():
+        return 'BillWithItems';
+      case _i8.Category():
         return 'Category';
-      case _i7.Greeting():
+      case _i9.CheckoutItem():
+        return 'CheckoutItem';
+      case _i10.Greeting():
         return 'Greeting';
-      case _i8.PosOrder():
+      case _i11.PosOrder():
         return 'PosOrder';
-      case _i9.OrderItem():
+      case _i12.OrderItem():
         return 'OrderItem';
-      case _i10.PosEvent():
+      case _i13.PosEvent():
         return 'PosEvent';
-      case _i11.PosUser():
+      case _i14.PosUser():
         return 'PosUser';
-      case _i12.Product():
+      case _i15.Product():
         return 'Product';
-      case _i13.ProductExtra():
+      case _i16.ProductExtra():
         return 'ProductExtra';
-      case _i14.RestaurantTable():
+      case _i17.Reservation():
+        return 'Reservation';
+      case _i18.RestaurantTable():
         return 'RestaurantTable';
-      case _i15.Settings():
+      case _i19.Settings():
         return 'Settings';
-      case _i16.Subcategory():
+      case _i20.Subcategory():
         return 'Subcategory';
     }
     className = _i2.Protocol().getClassNameForObject(data);
@@ -1203,38 +1471,50 @@ class Protocol extends _i1.SerializationManagerServer {
     if (dataClassName == 'Bill') {
       return deserialize<_i5.Bill>(data['data']);
     }
+    if (dataClassName == 'BillItem') {
+      return deserialize<_i6.BillItem>(data['data']);
+    }
+    if (dataClassName == 'BillWithItems') {
+      return deserialize<_i7.BillWithItems>(data['data']);
+    }
     if (dataClassName == 'Category') {
-      return deserialize<_i6.Category>(data['data']);
+      return deserialize<_i8.Category>(data['data']);
+    }
+    if (dataClassName == 'CheckoutItem') {
+      return deserialize<_i9.CheckoutItem>(data['data']);
     }
     if (dataClassName == 'Greeting') {
-      return deserialize<_i7.Greeting>(data['data']);
+      return deserialize<_i10.Greeting>(data['data']);
     }
     if (dataClassName == 'PosOrder') {
-      return deserialize<_i8.PosOrder>(data['data']);
+      return deserialize<_i11.PosOrder>(data['data']);
     }
     if (dataClassName == 'OrderItem') {
-      return deserialize<_i9.OrderItem>(data['data']);
+      return deserialize<_i12.OrderItem>(data['data']);
     }
     if (dataClassName == 'PosEvent') {
-      return deserialize<_i10.PosEvent>(data['data']);
+      return deserialize<_i13.PosEvent>(data['data']);
     }
     if (dataClassName == 'PosUser') {
-      return deserialize<_i11.PosUser>(data['data']);
+      return deserialize<_i14.PosUser>(data['data']);
     }
     if (dataClassName == 'Product') {
-      return deserialize<_i12.Product>(data['data']);
+      return deserialize<_i15.Product>(data['data']);
     }
     if (dataClassName == 'ProductExtra') {
-      return deserialize<_i13.ProductExtra>(data['data']);
+      return deserialize<_i16.ProductExtra>(data['data']);
+    }
+    if (dataClassName == 'Reservation') {
+      return deserialize<_i17.Reservation>(data['data']);
     }
     if (dataClassName == 'RestaurantTable') {
-      return deserialize<_i14.RestaurantTable>(data['data']);
+      return deserialize<_i18.RestaurantTable>(data['data']);
     }
     if (dataClassName == 'Settings') {
-      return deserialize<_i15.Settings>(data['data']);
+      return deserialize<_i19.Settings>(data['data']);
     }
     if (dataClassName == 'Subcategory') {
-      return deserialize<_i16.Subcategory>(data['data']);
+      return deserialize<_i20.Subcategory>(data['data']);
     }
     if (dataClassName.startsWith('serverpod.')) {
       data['className'] = dataClassName.substring(10);
@@ -1274,24 +1554,28 @@ class Protocol extends _i1.SerializationManagerServer {
     switch (t) {
       case _i5.Bill:
         return _i5.Bill.t;
-      case _i6.Category:
-        return _i6.Category.t;
-      case _i8.PosOrder:
-        return _i8.PosOrder.t;
-      case _i9.OrderItem:
-        return _i9.OrderItem.t;
-      case _i11.PosUser:
-        return _i11.PosUser.t;
-      case _i12.Product:
-        return _i12.Product.t;
-      case _i13.ProductExtra:
-        return _i13.ProductExtra.t;
-      case _i14.RestaurantTable:
-        return _i14.RestaurantTable.t;
-      case _i15.Settings:
-        return _i15.Settings.t;
-      case _i16.Subcategory:
-        return _i16.Subcategory.t;
+      case _i6.BillItem:
+        return _i6.BillItem.t;
+      case _i8.Category:
+        return _i8.Category.t;
+      case _i11.PosOrder:
+        return _i11.PosOrder.t;
+      case _i12.OrderItem:
+        return _i12.OrderItem.t;
+      case _i14.PosUser:
+        return _i14.PosUser.t;
+      case _i15.Product:
+        return _i15.Product.t;
+      case _i16.ProductExtra:
+        return _i16.ProductExtra.t;
+      case _i17.Reservation:
+        return _i17.Reservation.t;
+      case _i18.RestaurantTable:
+        return _i18.RestaurantTable.t;
+      case _i19.Settings:
+        return _i19.Settings.t;
+      case _i20.Subcategory:
+        return _i20.Subcategory.t;
     }
     return null;
   }

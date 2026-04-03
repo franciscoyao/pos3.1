@@ -1,0 +1,4 @@
+class: CheckoutItem
+fields:
+  id: int
+  quantity: int

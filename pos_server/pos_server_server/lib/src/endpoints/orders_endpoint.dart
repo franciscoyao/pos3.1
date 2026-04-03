@@ -95,8 +95,9 @@ class OrdersEndpoint extends Endpoint {
     String? tableNo,
     String? orderCode,
     String? waiterName,
-    List<OrderItem> items,
-  ) async {
+    List<OrderItem> items, {
+    DateTime? scheduledTime,
+  }) async {
     return await session.db.transaction<PosOrder>((txSession) async {
       // Auto-generate order code if not provided
       final finalOrderCode =
@@ -104,7 +105,8 @@ class OrdersEndpoint extends Endpoint {
           'ORD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
 
       // Check if table is occupied. If so, find the active order and append to it.
-      if (orderType == 'Dine-In' && tableNo != null) {
+      // Do NOT append if this is a scheduled order for the future.
+      if (orderType == 'Dine-In' && tableNo != null && scheduledTime == null) {
         final existingTables = await RestaurantTable.db.find(
           session,
           where: (t) => t.tableNumber.equals(tableNo),
@@ -112,19 +114,23 @@ class OrdersEndpoint extends Endpoint {
           transaction: txSession,
         );
 
-        if (existingTables.isNotEmpty && existingTables.first.status == 'Occupied') {
+        if (existingTables.isNotEmpty &&
+            existingTables.first.status == 'Occupied') {
           final activeOrderCode = existingTables.first.orderCode;
           if (activeOrderCode != null) {
             final activeOrders = await PosOrder.db.find(
               session,
-              where: (t) => t.orderCode.equals(activeOrderCode) & t.status.notEquals('Completed') & t.status.notEquals('Cancelled'),
+              where: (t) =>
+                  t.orderCode.equals(activeOrderCode) &
+                  t.status.notEquals('Completed') &
+                  t.status.notEquals('Cancelled'),
               limit: 1,
               transaction: txSession,
             );
 
             if (activeOrders.isNotEmpty) {
               final existingOrder = activeOrders.first;
-              
+
               // Add new items to existing order
               for (final item in items) {
                 final toInsert = OrderItem(
@@ -138,7 +144,11 @@ class OrdersEndpoint extends Endpoint {
                   notes: item.notes,
                   extras: item.extras,
                 );
-                await OrderItem.db.insertRow(session, toInsert, transaction: txSession);
+                await OrderItem.db.insertRow(
+                  session,
+                  toInsert,
+                  transaction: txSession,
+                );
               }
 
               // Update existing order total
@@ -160,13 +170,15 @@ class OrdersEndpoint extends Endpoint {
       }
 
       final now = DateTime.now();
+      final status = scheduledTime != null ? 'Scheduled' : 'Pending';
       final order = PosOrder(
         total: total,
         orderType: orderType,
         tableNo: tableNo,
         orderCode: finalOrderCode,
         waiterName: waiterName,
-        status: 'Pending',
+        status: status,
+        scheduledTime: scheduledTime,
         createdAt: now,
         updatedAt: now,
       );
@@ -238,9 +250,45 @@ class OrdersEndpoint extends Endpoint {
   Future<PosOrder> updateStatus(Session session, int id, String status) async {
     final existing = await PosOrder.db.findById(session, id);
     if (existing == null) throw Exception('Order not found');
+
+    // If moving from Scheduled to anything else, and it's a Dine-In table, mark as occupied
+    if (existing.status == 'Scheduled' &&
+        status != 'Scheduled' &&
+        existing.orderType == 'Dine-In' &&
+        existing.tableNo != null) {
+      final tables = await RestaurantTable.db.find(
+        session,
+        where: (t) => t.tableNumber.equals(existing.tableNo!),
+        limit: 1,
+      );
+      if (tables.isNotEmpty) {
+        await RestaurantTable.db.updateRow(
+          session,
+          tables.first.copyWith(
+            status: 'Occupied',
+            orderCode: existing.orderCode,
+            updatedAt: DateTime.now(),
+          ),
+        );
+        await EventService.broadcast(session, 'table_updated');
+      }
+    }
+
     final updated = await PosOrder.db.updateRow(
       session,
       existing.copyWith(status: status, updatedAt: DateTime.now()),
+    );
+    await EventService.broadcast(session, 'order_updated');
+    return updated;
+  }
+
+  // ─── Update ────────────────────────────────────────────────────────────────
+
+  Future<PosOrder> update(Session session, PosOrder order) async {
+    if (order.id == null) throw Exception('Order ID is required for update');
+    final updated = await PosOrder.db.updateRow(
+      session,
+      order.copyWith(updatedAt: DateTime.now()),
     );
     await EventService.broadcast(session, 'order_updated');
     return updated;

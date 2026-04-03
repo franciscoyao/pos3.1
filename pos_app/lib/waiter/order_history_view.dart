@@ -103,11 +103,13 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
   Widget _buildFilters() {
     final filters = [
       'All',
-      'Kiosk',
+      'Scheduled',
       'Pending',
       'In Progress',
+      'Ready',
       'Completed',
       'Cancelled',
+      'Kiosk',
     ];
     return Row(
       children: filters
@@ -211,10 +213,32 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
                 const SizedBox(height: 8),
                 Text(
                   order.createdAt != null
-                      ? timeFormat.format(order.createdAt!)
+                      ? 'Placed: ${timeFormat.format(order.createdAt!)}'
                       : 'N/A',
                   style: TextStyle(color: Colors.grey[500], fontSize: 14),
                 ),
+                if (order.status == 'Scheduled' && order.scheduledTime != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.schedule_rounded,
+                          size: 14,
+                          color: Colors.blue,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Scheduled for: ${timeFormat.format(order.scheduledTime!.toLocal())}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.blue,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 const SizedBox(height: 4),
                 Text(
                   'Waiter: ${order.waiterName ?? 'System'} • ${order.orderType ?? 'Dine-In'} ${order.tableNo != null ? ' (Table ${order.tableNo})' : ''}',
@@ -283,12 +307,16 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
+      case 'scheduled':
+        return Colors.blue;
       case 'pending':
         return Colors.orange;
       case 'in progress':
         return Colors.blue;
+      case 'ready':
+        return const Color(0xFF10B981);
       case 'completed':
-        return Colors.green;
+        return Colors.grey;
       case 'cancelled':
         return Colors.red;
       default:

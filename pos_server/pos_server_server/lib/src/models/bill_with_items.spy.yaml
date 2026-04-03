@@ -1,0 +1,4 @@
+class: BillWithItems
+fields:
+  bill: Bill
+  items: List<BillItem>

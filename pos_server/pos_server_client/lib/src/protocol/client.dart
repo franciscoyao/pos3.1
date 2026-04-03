@@ -18,17 +18,20 @@ import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
     as _i4;
 import 'package:pos_server_client/src/protocol/category.dart' as _i5;
 import 'package:pos_server_client/src/protocol/bill.dart' as _i6;
-import 'package:pos_server_client/src/protocol/pos_event.dart' as _i7;
-import 'package:pos_server_client/src/protocol/order.dart' as _i8;
-import 'package:pos_server_client/src/protocol/order_item.dart' as _i9;
-import 'package:pos_server_client/src/protocol/product.dart' as _i10;
-import 'package:pos_server_client/src/protocol/product_extra.dart' as _i11;
-import 'package:pos_server_client/src/protocol/settings.dart' as _i12;
-import 'package:pos_server_client/src/protocol/subcategory.dart' as _i13;
-import 'package:pos_server_client/src/protocol/restaurant_table.dart' as _i14;
-import 'package:pos_server_client/src/protocol/pos_user.dart' as _i15;
-import 'package:pos_server_client/src/protocol/greetings/greeting.dart' as _i16;
-import 'protocol.dart' as _i17;
+import 'package:pos_server_client/src/protocol/checkout_item.dart' as _i7;
+import 'package:pos_server_client/src/protocol/bill_with_items.dart' as _i8;
+import 'package:pos_server_client/src/protocol/pos_event.dart' as _i9;
+import 'package:pos_server_client/src/protocol/order.dart' as _i10;
+import 'package:pos_server_client/src/protocol/order_item.dart' as _i11;
+import 'package:pos_server_client/src/protocol/product.dart' as _i12;
+import 'package:pos_server_client/src/protocol/product_extra.dart' as _i13;
+import 'package:pos_server_client/src/protocol/reservation.dart' as _i14;
+import 'package:pos_server_client/src/protocol/settings.dart' as _i15;
+import 'package:pos_server_client/src/protocol/subcategory.dart' as _i16;
+import 'package:pos_server_client/src/protocol/restaurant_table.dart' as _i17;
+import 'package:pos_server_client/src/protocol/pos_user.dart' as _i18;
+import 'package:pos_server_client/src/protocol/greetings/greeting.dart' as _i19;
+import 'protocol.dart' as _i20;
 
 /// By extending [EmailIdpBaseEndpoint], the email identity provider endpoints
 /// are made available on the server and enable the corresponding sign-in widget
@@ -322,6 +325,10 @@ class EndpointCheckout extends _i2.EndpointRef {
     double? serviceAmount,
     double? tipAmount,
     double? total,
+    String? taxNumber,
+    int? initialSplitCount,
+    int? remainingSplitCount,
+    List<_i7.CheckoutItem>? itemsToPay,
   }) => caller.callServerEndpoint<_i6.Bill>(
     'checkout',
     'checkout',
@@ -334,6 +341,10 @@ class EndpointCheckout extends _i2.EndpointRef {
       'serviceAmount': serviceAmount,
       'tipAmount': tipAmount,
       'total': total,
+      'taxNumber': taxNumber,
+      'initialSplitCount': initialSplitCount,
+      'remainingSplitCount': remainingSplitCount,
+      'itemsToPay': itemsToPay,
     },
   );
 
@@ -344,8 +355,8 @@ class EndpointCheckout extends _i2.EndpointRef {
         {},
       );
 
-  _i3.Future<_i6.Bill> getDetails(int billId) =>
-      caller.callServerEndpoint<_i6.Bill>(
+  _i3.Future<_i8.BillWithItems> getDetails(int billId) =>
+      caller.callServerEndpoint<_i8.BillWithItems>(
         'checkout',
         'getDetails',
         {'billId': billId},
@@ -363,8 +374,8 @@ class EndpointEvents extends _i2.EndpointRef {
   String get name => 'events';
 
   /// Subscribe to all POS real-time events.
-  _i3.Stream<_i7.PosEvent> subscribe() => caller
-      .callStreamingServerEndpoint<_i3.Stream<_i7.PosEvent>, _i7.PosEvent>(
+  _i3.Stream<_i9.PosEvent> subscribe() => caller
+      .callStreamingServerEndpoint<_i3.Stream<_i9.PosEvent>, _i9.PosEvent>(
         'events',
         'subscribe',
         {},
@@ -379,11 +390,11 @@ class EndpointOrders extends _i2.EndpointRef {
   @override
   String get name => 'orders';
 
-  _i3.Future<List<_i8.PosOrder>> getAll({
+  _i3.Future<List<_i10.PosOrder>> getAll({
     required bool includeItems,
     String? statusFilter,
     String? stationFilter,
-  }) => caller.callServerEndpoint<List<_i8.PosOrder>>(
+  }) => caller.callServerEndpoint<List<_i10.PosOrder>>(
     'orders',
     'getAll',
     {
@@ -393,21 +404,22 @@ class EndpointOrders extends _i2.EndpointRef {
     },
   );
 
-  _i3.Future<_i8.PosOrder> getById(int id) =>
-      caller.callServerEndpoint<_i8.PosOrder>(
+  _i3.Future<_i10.PosOrder> getById(int id) =>
+      caller.callServerEndpoint<_i10.PosOrder>(
         'orders',
         'getById',
         {'id': id},
       );
 
-  _i3.Future<_i8.PosOrder> create(
+  _i3.Future<_i10.PosOrder> create(
     double total,
     String? orderType,
     String? tableNo,
     String? orderCode,
     String? waiterName,
-    List<_i9.OrderItem> items,
-  ) => caller.callServerEndpoint<_i8.PosOrder>(
+    List<_i11.OrderItem> items, {
+    DateTime? scheduledTime,
+  }) => caller.callServerEndpoint<_i10.PosOrder>(
     'orders',
     'create',
     {
@@ -417,13 +429,14 @@ class EndpointOrders extends _i2.EndpointRef {
       'orderCode': orderCode,
       'waiterName': waiterName,
       'items': items,
+      'scheduledTime': scheduledTime,
     },
   );
 
-  _i3.Future<_i8.PosOrder> updateStatus(
+  _i3.Future<_i10.PosOrder> updateStatus(
     int id,
     String status,
-  ) => caller.callServerEndpoint<_i8.PosOrder>(
+  ) => caller.callServerEndpoint<_i10.PosOrder>(
     'orders',
     'updateStatus',
     {
@@ -431,6 +444,13 @@ class EndpointOrders extends _i2.EndpointRef {
       'status': status,
     },
   );
+
+  _i3.Future<_i10.PosOrder> update(_i10.PosOrder order) =>
+      caller.callServerEndpoint<_i10.PosOrder>(
+        'orders',
+        'update',
+        {'order': order},
+      );
 
   _i3.Future<bool> merge(
     int targetOrderId,
@@ -484,31 +504,31 @@ class EndpointProducts extends _i2.EndpointRef {
   @override
   String get name => 'products';
 
-  _i3.Future<List<_i10.Product>> getAll() =>
-      caller.callServerEndpoint<List<_i10.Product>>(
+  _i3.Future<List<_i12.Product>> getAll() =>
+      caller.callServerEndpoint<List<_i12.Product>>(
         'products',
         'getAll',
         {},
       );
 
-  _i3.Future<List<_i10.Product>> getPopular(String? orderType) =>
-      caller.callServerEndpoint<List<_i10.Product>>(
+  _i3.Future<List<_i12.Product>> getPopular(String? orderType) =>
+      caller.callServerEndpoint<List<_i12.Product>>(
         'products',
         'getPopular',
         {'orderType': orderType},
       );
 
-  _i3.Future<_i10.Product> create(_i10.Product product) =>
-      caller.callServerEndpoint<_i10.Product>(
+  _i3.Future<_i12.Product> create(_i12.Product product) =>
+      caller.callServerEndpoint<_i12.Product>(
         'products',
         'create',
         {'product': product},
       );
 
-  _i3.Future<_i10.Product> update(
+  _i3.Future<_i12.Product> update(
     int id,
-    _i10.Product product,
-  ) => caller.callServerEndpoint<_i10.Product>(
+    _i12.Product product,
+  ) => caller.callServerEndpoint<_i12.Product>(
     'products',
     'update',
     {
@@ -523,11 +543,11 @@ class EndpointProducts extends _i2.EndpointRef {
     {'id': id},
   );
 
-  _i3.Future<_i11.ProductExtra> addExtra(
+  _i3.Future<_i13.ProductExtra> addExtra(
     int productId,
     String name,
     double price,
-  ) => caller.callServerEndpoint<_i11.ProductExtra>(
+  ) => caller.callServerEndpoint<_i13.ProductExtra>(
     'products',
     'addExtra',
     {
@@ -559,21 +579,63 @@ class EndpointReports extends _i2.EndpointRef {
 }
 
 /// {@category Endpoint}
+class EndpointReservations extends _i2.EndpointRef {
+  EndpointReservations(_i2.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'reservations';
+
+  _i3.Future<List<_i14.Reservation>> getAll() =>
+      caller.callServerEndpoint<List<_i14.Reservation>>(
+        'reservations',
+        'getAll',
+        {},
+      );
+
+  _i3.Future<_i14.Reservation> create(_i14.Reservation reservation) =>
+      caller.callServerEndpoint<_i14.Reservation>(
+        'reservations',
+        'create',
+        {'reservation': reservation},
+      );
+
+  _i3.Future<_i14.Reservation> update(_i14.Reservation reservation) =>
+      caller.callServerEndpoint<_i14.Reservation>(
+        'reservations',
+        'update',
+        {'reservation': reservation},
+      );
+
+  _i3.Future<bool> delete(int id) => caller.callServerEndpoint<bool>(
+    'reservations',
+    'delete',
+    {'id': id},
+  );
+
+  _i3.Future<List<_i14.Reservation>> getByTable(String tableNumber) =>
+      caller.callServerEndpoint<List<_i14.Reservation>>(
+        'reservations',
+        'getByTable',
+        {'tableNumber': tableNumber},
+      );
+}
+
+/// {@category Endpoint}
 class EndpointSettings extends _i2.EndpointRef {
   EndpointSettings(_i2.EndpointCaller caller) : super(caller);
 
   @override
   String get name => 'settings';
 
-  _i3.Future<_i12.Settings> getSettings() =>
-      caller.callServerEndpoint<_i12.Settings>(
+  _i3.Future<_i15.Settings> getSettings() =>
+      caller.callServerEndpoint<_i15.Settings>(
         'settings',
         'getSettings',
         {},
       );
 
-  _i3.Future<_i12.Settings> updateSettings(_i12.Settings settings) =>
-      caller.callServerEndpoint<_i12.Settings>(
+  _i3.Future<_i15.Settings> updateSettings(_i15.Settings settings) =>
+      caller.callServerEndpoint<_i15.Settings>(
         'settings',
         'updateSettings',
         {'settings': settings},
@@ -602,6 +664,13 @@ class EndpointSettings extends _i2.EndpointRef {
     'getDatabaseSize',
     {},
   );
+
+  _i3.Future<bool> clearAllTransactionalData() =>
+      caller.callServerEndpoint<bool>(
+        'settings',
+        'clearAllTransactionalData',
+        {},
+      );
 }
 
 /// {@category Endpoint}
@@ -611,18 +680,18 @@ class EndpointSubcategories extends _i2.EndpointRef {
   @override
   String get name => 'subcategories';
 
-  _i3.Future<List<_i13.Subcategory>> getAll() =>
-      caller.callServerEndpoint<List<_i13.Subcategory>>(
+  _i3.Future<List<_i16.Subcategory>> getAll() =>
+      caller.callServerEndpoint<List<_i16.Subcategory>>(
         'subcategories',
         'getAll',
         {},
       );
 
-  _i3.Future<_i13.Subcategory> create(
+  _i3.Future<_i16.Subcategory> create(
     int categoryId,
     String name,
     int sortOrder,
-  ) => caller.callServerEndpoint<_i13.Subcategory>(
+  ) => caller.callServerEndpoint<_i16.Subcategory>(
     'subcategories',
     'create',
     {
@@ -632,12 +701,12 @@ class EndpointSubcategories extends _i2.EndpointRef {
     },
   );
 
-  _i3.Future<_i13.Subcategory> update(
+  _i3.Future<_i16.Subcategory> update(
     int id,
     int categoryId,
     String name,
     int sortOrder,
-  ) => caller.callServerEndpoint<_i13.Subcategory>(
+  ) => caller.callServerEndpoint<_i16.Subcategory>(
     'subcategories',
     'update',
     {
@@ -662,26 +731,26 @@ class EndpointTables extends _i2.EndpointRef {
   @override
   String get name => 'tables';
 
-  _i3.Future<List<_i14.RestaurantTable>> getAll() =>
-      caller.callServerEndpoint<List<_i14.RestaurantTable>>(
+  _i3.Future<List<_i17.RestaurantTable>> getAll() =>
+      caller.callServerEndpoint<List<_i17.RestaurantTable>>(
         'tables',
         'getAll',
         {},
       );
 
-  _i3.Future<_i14.RestaurantTable> create(String tableNumber) =>
-      caller.callServerEndpoint<_i14.RestaurantTable>(
+  _i3.Future<_i17.RestaurantTable> create(String tableNumber) =>
+      caller.callServerEndpoint<_i17.RestaurantTable>(
         'tables',
         'create',
         {'tableNumber': tableNumber},
       );
 
-  _i3.Future<_i14.RestaurantTable> update(
+  _i3.Future<_i17.RestaurantTable> update(
     int id,
     String status,
     String? orderCode,
     int guestCount,
-  ) => caller.callServerEndpoint<_i14.RestaurantTable>(
+  ) => caller.callServerEndpoint<_i17.RestaurantTable>(
     'tables',
     'update',
     {
@@ -704,17 +773,17 @@ class EndpointTables extends _i2.EndpointRef {
     },
   );
 
-  _i3.Future<void> moveItemsToTable(
+  _i3.Future<bool> moveItemsToTable(
     List<int> itemIds,
     List<int> quantities,
-    String targetTableNumber,
-  ) => caller.callServerEndpoint<void>(
+    String targetTableNo,
+  ) => caller.callServerEndpoint<bool>(
     'tables',
     'moveItemsToTable',
     {
       'itemIds': itemIds,
       'quantities': quantities,
-      'targetTableNumber': targetTableNumber,
+      'targetTableNo': targetTableNo,
     },
   );
 }
@@ -726,24 +795,24 @@ class EndpointUsers extends _i2.EndpointRef {
   @override
   String get name => 'users';
 
-  _i3.Future<List<_i15.PosUser>> getAll() =>
-      caller.callServerEndpoint<List<_i15.PosUser>>(
+  _i3.Future<List<_i18.PosUser>> getAll() =>
+      caller.callServerEndpoint<List<_i18.PosUser>>(
         'users',
         'getAll',
         {},
       );
 
-  _i3.Future<_i15.PosUser> create(_i15.PosUser user) =>
-      caller.callServerEndpoint<_i15.PosUser>(
+  _i3.Future<_i18.PosUser> create(_i18.PosUser user) =>
+      caller.callServerEndpoint<_i18.PosUser>(
         'users',
         'create',
         {'user': user},
       );
 
-  _i3.Future<_i15.PosUser> update(
+  _i3.Future<_i18.PosUser> update(
     int id,
-    _i15.PosUser user,
-  ) => caller.callServerEndpoint<_i15.PosUser>(
+    _i18.PosUser user,
+  ) => caller.callServerEndpoint<_i18.PosUser>(
     'users',
     'update',
     {
@@ -758,11 +827,11 @@ class EndpointUsers extends _i2.EndpointRef {
     {'id': id},
   );
 
-  _i3.Future<_i15.PosUser?> login(
+  _i3.Future<_i18.PosUser?> login(
     String role,
     String? username,
     String? pin,
-  ) => caller.callServerEndpoint<_i15.PosUser?>(
+  ) => caller.callServerEndpoint<_i18.PosUser?>(
     'users',
     'login',
     {
@@ -783,8 +852,8 @@ class EndpointGreeting extends _i2.EndpointRef {
   String get name => 'greeting';
 
   /// Returns a personalized greeting message: "Hello {name}".
-  _i3.Future<_i16.Greeting> hello(String name) =>
-      caller.callServerEndpoint<_i16.Greeting>(
+  _i3.Future<_i19.Greeting> hello(String name) =>
+      caller.callServerEndpoint<_i19.Greeting>(
         'greeting',
         'hello',
         {'name': name},
@@ -822,7 +891,7 @@ class Client extends _i2.ServerpodClientShared {
     bool? disconnectStreamsOnLostInternetConnection,
   }) : super(
          host,
-         _i17.Protocol(),
+         _i20.Protocol(),
          securityContext: securityContext,
          streamingConnectionTimeout: streamingConnectionTimeout,
          connectionTimeout: connectionTimeout,
@@ -839,6 +908,7 @@ class Client extends _i2.ServerpodClientShared {
     orders = EndpointOrders(this);
     products = EndpointProducts(this);
     reports = EndpointReports(this);
+    reservations = EndpointReservations(this);
     settings = EndpointSettings(this);
     subcategories = EndpointSubcategories(this);
     tables = EndpointTables(this);
@@ -863,6 +933,8 @@ class Client extends _i2.ServerpodClientShared {
 
   late final EndpointReports reports;
 
+  late final EndpointReservations reservations;
+
   late final EndpointSettings settings;
 
   late final EndpointSubcategories subcategories;
@@ -885,6 +957,7 @@ class Client extends _i2.ServerpodClientShared {
     'orders': orders,
     'products': products,
     'reports': reports,
+    'reservations': reservations,
     'settings': settings,
     'subcategories': subcategories,
     'tables': tables,
