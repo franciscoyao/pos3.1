@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pos_server_client/pos_server_client.dart';
@@ -13,11 +14,40 @@ class CheckoutHistoryView extends StatefulWidget {
 class _CheckoutHistoryViewState extends State<CheckoutHistoryView> {
   List<Bill> bills = [];
   bool isLoading = true;
+  StreamSubscription? _eventSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadBills();
+    _subscribeToEvents();
+  }
+
+  @override
+  void dispose() {
+    _eventSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _subscribeToEvents() {
+    _eventSubscription = posEventStreamController.stream.listen((event) {
+      if (event.eventType == 'checkout_completed') {
+        _loadBillsQuietly();
+      }
+    });
+  }
+
+  Future<void> _loadBillsQuietly() async {
+    try {
+      final fetched = await client.checkout.getAll();
+      if (mounted) {
+        setState(() {
+          bills = fetched;
+        });
+      }
+    } catch (e) {
+      // Silent fail
+    }
   }
 
   Future<void> _loadBills() async {

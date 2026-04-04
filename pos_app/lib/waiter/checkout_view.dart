@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:pos_server_client/pos_server_client.dart';
 import '../main.dart';
@@ -28,6 +29,7 @@ class _CheckoutViewState extends State<CheckoutView> {
   List<int> selectedItemIds = [];
   Map<int, int> itemQuantitiesToPay = {};
   List<double> customShares = [0.0];
+  StreamSubscription? _eventSubscription;
 
   double get amountToPay {
     if (selectedOrder == null) return 0.0;
@@ -59,13 +61,53 @@ class _CheckoutViewState extends State<CheckoutView> {
     super.initState();
     filterTableNo = widget.initialTableNo;
     _loadActiveOrders();
+    _subscribeToEvents();
   }
 
   @override
   void dispose() {
+    _eventSubscription?.cancel();
     _taxNumberController.dispose();
     _customAmountController.dispose();
     super.dispose();
+  }
+
+  void _subscribeToEvents() {
+    _eventSubscription = posEventStreamController.stream.listen((event) {
+      if (event.eventType == 'order_updated' ||
+          event.eventType == 'checkout_completed') {
+        _loadActiveOrdersQuietly();
+      }
+    });
+  }
+
+  Future<void> _loadActiveOrdersQuietly() async {
+    try {
+      final fetched = await client.orders.getAll(
+        includeItems: true,
+        statusFilter: 'Pending,In Progress',
+      );
+      if (mounted) {
+        setState(() {
+          activeOrders = fetched;
+
+          // If we had a selected order, try to update it
+          if (selectedOrder != null) {
+            final updated = activeOrders
+                .where((o) => o.id == selectedOrder!.id)
+                .toList();
+            if (updated.isNotEmpty) {
+              selectedOrder = updated.first;
+            } else {
+              // Order is gone (e.g. fully paid)
+              selectedOrder = null;
+            }
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading active orders: $e');
+    }
   }
 
   Future<void> _loadActiveOrders() async {

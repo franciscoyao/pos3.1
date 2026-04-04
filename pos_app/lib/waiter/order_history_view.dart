@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pos_server_client/pos_server_client.dart';
@@ -15,11 +16,54 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
   List<PosOrder> orders = [];
   bool isLoading = true;
   String selectedFilter = 'All';
+  StreamSubscription? _eventSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadOrders();
+    _subscribeToEvents();
+  }
+
+  @override
+  void dispose() {
+    _eventSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _subscribeToEvents() {
+    _eventSubscription = posEventStreamController.stream.listen((event) {
+      if (event.eventType == 'order_created' ||
+          event.eventType == 'order_updated' ||
+          event.eventType == 'checkout_completed') {
+        _loadOrdersQuietly();
+      }
+    });
+  }
+
+  Future<void> _loadOrdersQuietly() async {
+    try {
+      String? statusFilter;
+      if (selectedFilter != 'All' && selectedFilter != 'Kiosk') {
+        statusFilter = selectedFilter;
+      }
+      final fetchedOrders = await client.orders.getAll(
+        includeItems: true,
+        statusFilter: statusFilter,
+        stationFilter: widget.stationFilter,
+      );
+      if (mounted) {
+        setState(() {
+          if (selectedFilter == 'Kiosk') {
+            orders = fetchedOrders.where((o) => o.waiterName == 'Kiosk').toList();
+          } else {
+            orders = fetchedOrders;
+          }
+        });
+      }
+    } catch (e) {
+      // Silent fail
+    }
   }
 
   Future<void> _loadOrders() async {

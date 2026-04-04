@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pos_server_client/pos_server_client.dart';
@@ -13,11 +14,40 @@ class BillsView extends StatefulWidget {
 class _BillsViewState extends State<BillsView> {
   List<Bill> bills = [];
   bool isLoading = true;
+  StreamSubscription? _eventSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadBills();
+    _subscribeToEvents();
+  }
+
+  @override
+  void dispose() {
+    _eventSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _subscribeToEvents() {
+    _eventSubscription = posEventStreamController.stream.listen((event) {
+      if (event.eventType == 'checkout_completed') {
+        _loadBillsQuietly();
+      }
+    });
+  }
+
+  Future<void> _loadBillsQuietly() async {
+    try {
+      final fetched = await client.checkout.getAll();
+      if (mounted) {
+        setState(() {
+          bills = fetched;
+        });
+      }
+    } catch (e) {
+      // Silent fail
+    }
   }
 
   Future<void> _loadBills() async {
@@ -247,7 +277,9 @@ class _BillsViewState extends State<BillsView> {
               children: [
                 const Icon(Icons.receipt_long_outlined, color: Colors.blue),
                 const SizedBox(width: 12),
-                Text('Bill #${detailedBill.billNumber.substring(detailedBill.billNumber.length - 4)}'),
+                Text(
+                  'Bill #${detailedBill.billNumber.substring(detailedBill.billNumber.length - 4)}',
+                ),
               ],
             ),
             content: SizedBox(
@@ -257,28 +289,48 @@ class _BillsViewState extends State<BillsView> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Date: ${detailedBill.createdAt != null ? dateFormat.format(detailedBill.createdAt!) : 'N/A'}'),
+                    Text(
+                      'Date: ${detailedBill.createdAt != null ? dateFormat.format(detailedBill.createdAt!) : 'N/A'}',
+                    ),
                     Text('Waiter: ${detailedBill.waiterName ?? 'System'}'),
                     Text('Table: ${detailedBill.tableNo ?? 'Takeaway'}'),
                     Text('Payment Method: ${detailedBill.paymentMethod}'),
                     if (detailedBill.taxNumber != null)
-                      Text('NIF: ${detailedBill.taxNumber}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        'NIF: ${detailedBill.taxNumber}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     const Divider(height: 32),
-                    const Text('Items:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Items:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     const SizedBox(height: 8),
                     if (billItems.isNotEmpty)
-                      ...billItems.map((item) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(child: Text('${item.quantity}x ${item.productName ?? 'Unknown'}')),
-                            Text('€${item.totalPrice.toStringAsFixed(2)}'),
-                          ],
+                      ...billItems.map(
+                        (item) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${item.quantity}x ${item.productName ?? 'Unknown'}',
+                                ),
+                              ),
+                              Text('€${item.totalPrice.toStringAsFixed(2)}'),
+                            ],
+                          ),
                         ),
-                      ))
+                      )
                     else
-                      const Text('No item details available', style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
+                      const Text(
+                        'No item details available',
+                        style: TextStyle(
+                          fontStyle: FontStyle.italic,
+                          color: Colors.grey,
+                        ),
+                      ),
                     const Divider(height: 32),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -298,8 +350,20 @@ class _BillsViewState extends State<BillsView> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Total:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                        Text('€${detailedBill.total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                        const Text(
+                          'Total:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        Text(
+                          '€${detailedBill.total.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
                       ],
                     ),
                   ],

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
@@ -16,11 +17,40 @@ class _ReportsViewState extends State<ReportsView> {
   Map<String, dynamic>? reportData;
   bool isLoading = true;
   String? errorMessage;
+  StreamSubscription? _eventSubscription;
 
   @override
   void initState() {
     super.initState();
     _fetchReportData();
+    _subscribeToEvents();
+  }
+
+  @override
+  void dispose() {
+    _eventSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _subscribeToEvents() {
+    _eventSubscription = posEventStreamController.stream.listen((event) {
+      if (event.eventType == 'checkout_completed') {
+        _fetchReportDataQuietly();
+      }
+    });
+  }
+
+  Future<void> _fetchReportDataQuietly() async {
+    try {
+      final jsonString = await client.reports.getSummaryJson();
+      if (mounted) {
+        setState(() {
+          reportData = json.decode(jsonString);
+        });
+      }
+    } catch (e) {
+      // Silent fail
+    }
   }
 
   Future<void> _fetchReportData() async {

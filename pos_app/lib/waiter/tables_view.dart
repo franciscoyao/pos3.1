@@ -363,21 +363,23 @@ class _TablesViewState extends State<TablesView> {
   }
 
   Widget _buildReservationCard(Reservation res) {
-    final timeFormat = DateFormat('MMM dd, hh:mm a');
-    final isToday =
-        res.reservationTime.day == DateTime.now().day &&
-        res.reservationTime.month == DateTime.now().month &&
-        res.reservationTime.year == DateTime.now().year;
+    final timeFormat = DateFormat('hh:mm a');
+    final dateFormat = DateFormat('MMM dd');
+    final isToday = DateUtils.isSameDay(res.reservationTime, DateTime.now());
+    final isUpcoming = res.reservationTime.isAfter(DateTime.now());
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey[100]!),
+        border: Border.all(
+          color: isUpcoming && isToday ? Colors.blue[100]! : Colors.grey[200]!,
+          width: isUpcoming && isToday ? 2 : 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -413,7 +415,15 @@ class _TablesViewState extends State<TablesView> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 4),
+          if (res.customerPhone != null && res.customerPhone!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4.0),
+              child: Text(
+                res.customerPhone!,
+                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+              ),
+            ),
+          const SizedBox(height: 8),
           Row(
             children: [
               Icon(Icons.people_outline, size: 14, color: Colors.grey[500]),
@@ -426,24 +436,49 @@ class _TablesViewState extends State<TablesView> {
           ),
           const Spacer(),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(
-                Icons.access_time,
-                size: 14,
-                color: isToday ? Colors.blue : Colors.grey,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    dateFormat.format(res.reservationTime),
+                    style: TextStyle(
+                      color: isToday ? Colors.blue : Colors.grey[600],
+                      fontSize: 11,
+                      fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  Text(
+                    timeFormat.format(res.reservationTime),
+                    style: TextStyle(
+                      color: isToday ? Colors.blue : Colors.grey[800],
+                      fontSize: 14,
+                      fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 4),
-              Text(
-                timeFormat.format(res.reservationTime),
-                style: TextStyle(
-                  color: isToday ? Colors.blue : Colors.grey[600],
-                  fontSize: 12,
-                  fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+              if (res.status == 'Confirmed')
+                ElevatedButton(
+                  onPressed: () => _markReservationAsArrived(res),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    minimumSize: const Size(0, 32),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('Arrive', style: TextStyle(fontSize: 12)),
                 ),
-              ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -476,11 +511,26 @@ class _TablesViewState extends State<TablesView> {
     );
   }
 
+  Future<void> _markReservationAsArrived(Reservation res) async {
+    try {
+      await client.reservations.markAsArrived(res.id!);
+      _loadDataQuietly();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error updating status: $e')));
+      }
+    }
+  }
+
   Widget _buildStatusBadge(String status) {
     Color color;
     switch (status) {
       case 'Confirmed':
         color = Colors.green;
+      case 'Arrived':
+        color = Colors.purple;
       case 'Cancelled':
         color = Colors.red;
       case 'Completed':
@@ -517,6 +567,8 @@ class _TablesViewState extends State<TablesView> {
     final tableController = TextEditingController(
       text: reservation?.tableNumber,
     );
+    final emailController = TextEditingController(text: reservation?.email);
+    final notesController = TextEditingController(text: reservation?.notes);
     final guestController = TextEditingController(
       text: reservation?.guestCount.toString() ?? '2',
     );
@@ -542,6 +594,19 @@ class _TablesViewState extends State<TablesView> {
                   decoration: const InputDecoration(
                     labelText: 'Phone (Optional)',
                   ),
+                ),
+                TextField(
+                  controller: emailController,
+                  decoration: const InputDecoration(
+                    labelText: 'Email (Optional)',
+                  ),
+                ),
+                TextField(
+                  controller: notesController,
+                  decoration: const InputDecoration(
+                    labelText: 'Notes (Optional)',
+                  ),
+                  maxLines: 2,
                 ),
                 Row(
                   children: [
@@ -598,9 +663,18 @@ class _TablesViewState extends State<TablesView> {
                   DropdownButtonFormField<String>(
                     initialValue: status,
                     decoration: const InputDecoration(labelText: 'Status'),
-                    items: ['Pending', 'Confirmed', 'Cancelled', 'Completed']
-                        .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                        .toList(),
+                    items:
+                        [
+                              'Pending',
+                              'Confirmed',
+                              'Arrived',
+                              'Cancelled',
+                              'Completed',
+                            ]
+                            .map(
+                              (s) => DropdownMenuItem(value: s, child: Text(s)),
+                            )
+                            .toList(),
                     onChanged: (val) => setDialogState(() => status = val!),
                   ),
               ],
@@ -612,7 +686,21 @@ class _TablesViewState extends State<TablesView> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () {
+                if (nameController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please enter customer name')),
+                  );
+                  return;
+                }
+                if (tableController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please enter table number')),
+                  );
+                  return;
+                }
+                Navigator.pop(context, true);
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0F172A),
               ),
@@ -639,6 +727,8 @@ class _TablesViewState extends State<TablesView> {
         id: reservation?.id,
         customerName: nameController.text,
         customerPhone: phoneController.text,
+        email: emailController.text,
+        notes: notesController.text,
         tableNumber: tableController.text,
         guestCount: int.tryParse(guestController.text) ?? 2,
         reservationTime: finalDateTime,
@@ -648,6 +738,9 @@ class _TablesViewState extends State<TablesView> {
 
       try {
         if (isEditing) {
+          if (res.id == null) {
+            throw Exception('Reservation ID is missing. Cannot update.');
+          }
           await client.reservations.update(res);
         } else {
           await client.reservations.create(res);
@@ -694,6 +787,42 @@ class _TablesViewState extends State<TablesView> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error cancelling reservation: $e')),
           );
+        }
+      }
+    }
+  }
+
+  Future<void> _confirmDeleteTable(RestaurantTable table) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Table?'),
+        content: Text(
+          'Are you sure you want to delete table ${table.tableNumber}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await client.tables.delete(table.id!);
+        _loadDataQuietly();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error deleting table: $e')));
         }
       }
     }
@@ -955,6 +1084,18 @@ class _TablesViewState extends State<TablesView> {
                         ),
                       ),
                     ],
+                  )
+                else
+                  IconButton(
+                    onPressed: () => _confirmDeleteTable(table),
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      size: 20,
+                      color: Colors.grey,
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    splashRadius: 20,
                   ),
               ],
             ),

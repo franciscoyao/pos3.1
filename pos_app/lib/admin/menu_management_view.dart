@@ -44,7 +44,7 @@ class _MenuManagementViewState extends State<MenuManagementView>
   }
 
   void _subscribeToEvents() {
-    _eventSubscription = client.events.subscribe().listen((event) {
+    _eventSubscription = posEventStreamController.stream.listen((event) {
       if (event.eventType == 'product_updated') {
         _loadDataQuietly();
       }

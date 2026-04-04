@@ -33,7 +33,7 @@ class _UserManagementViewState extends State<UserManagementView> {
   }
 
   void _subscribeToEvents() {
-    _eventSubscription = client.events.subscribe().listen((event) {
+    _eventSubscription = posEventStreamController.stream.listen((event) {
       if (event.eventType == 'user_updated') {
         _loadUsersQuietly();
       }
