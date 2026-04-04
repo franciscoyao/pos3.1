@@ -618,6 +618,13 @@ class EndpointReservations extends _i2.EndpointRef {
         'getByTable',
         {'tableNumber': tableNumber},
       );
+
+  _i3.Future<_i14.Reservation> markAsArrived(int id) =>
+      caller.callServerEndpoint<_i14.Reservation>(
+        'reservations',
+        'markAsArrived',
+        {'id': id},
+      );
 }
 
 /// {@category Endpoint}
@@ -759,6 +766,12 @@ class EndpointTables extends _i2.EndpointRef {
       'orderCode': orderCode,
       'guestCount': guestCount,
     },
+  );
+
+  _i3.Future<bool> delete(int id) => caller.callServerEndpoint<bool>(
+    'tables',
+    'delete',
+    {'id': id},
   );
 
   _i3.Future<void> mergeTables(

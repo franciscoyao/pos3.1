@@ -160,7 +160,7 @@ class CheckoutEndpoint extends Endpoint {
         transaction: txSession,
       );
 
-      // Free up the table only if fully paid
+      // Delete the table only if fully paid
       if (isFullyPaid && order.tableNo != null) {
         final tables = await RestaurantTable.db.find(
           session,
@@ -169,13 +169,9 @@ class CheckoutEndpoint extends Endpoint {
           transaction: txSession,
         );
         if (tables.isNotEmpty) {
-          await RestaurantTable.db.updateRow(
+          await RestaurantTable.db.deleteRow(
             session,
-            tables.first.copyWith(
-              status: 'Available',
-              orderCode: null,
-              updatedAt: DateTime.now(),
-            ),
+            tables.first,
             transaction: txSession,
           );
         }

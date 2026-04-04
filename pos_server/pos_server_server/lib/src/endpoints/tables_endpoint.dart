@@ -42,6 +42,14 @@ class TablesEndpoint extends Endpoint {
     return result;
   }
 
+  Future<bool> delete(Session session, int id) async {
+    final table = await RestaurantTable.db.findById(session, id);
+    if (table == null) return false;
+    await RestaurantTable.db.deleteRow(session, table);
+    await EventService.broadcast(session, 'table_updated');
+    return true;
+  }
+
   Future<void> mergeTables(
     Session session,
     String sourceTableNumber,

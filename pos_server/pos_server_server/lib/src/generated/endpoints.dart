@@ -1102,6 +1102,26 @@ class Endpoints extends _i1.EndpointDispatch {
                         params['tableNumber'],
                       ),
         ),
+        'markAsArrived': _i1.MethodConnector(
+          name: 'markAsArrived',
+          params: {
+            'id': _i1.ParameterDescription(
+              name: 'id',
+              type: _i1.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _i1.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['reservations'] as _i10.ReservationsEndpoint)
+                      .markAsArrived(
+                        session,
+                        params['id'],
+                      ),
+        ),
       },
     );
     connectors['settings'] = _i1.EndpointConnector(
@@ -1371,6 +1391,24 @@ class Endpoints extends _i1.EndpointDispatch {
                 params['status'],
                 params['orderCode'],
                 params['guestCount'],
+              ),
+        ),
+        'delete': _i1.MethodConnector(
+          name: 'delete',
+          params: {
+            'id': _i1.ParameterDescription(
+              name: 'id',
+              type: _i1.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _i1.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['tables'] as _i13.TablesEndpoint).delete(
+                session,
+                params['id'],
               ),
         ),
         'mergeTables': _i1.MethodConnector(

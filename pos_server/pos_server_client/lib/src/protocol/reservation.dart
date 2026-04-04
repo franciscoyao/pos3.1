@@ -21,6 +21,8 @@ abstract class Reservation implements _i1.SerializableModel {
     required this.reservationTime,
     required this.guestCount,
     String? status,
+    this.notes,
+    this.email,
     required this.createdAt,
     this.updatedAt,
   }) : status = status ?? 'Pending';
@@ -33,6 +35,8 @@ abstract class Reservation implements _i1.SerializableModel {
     required DateTime reservationTime,
     required int guestCount,
     String? status,
+    String? notes,
+    String? email,
     required DateTime createdAt,
     DateTime? updatedAt,
   }) = _ReservationImpl;
@@ -48,6 +52,8 @@ abstract class Reservation implements _i1.SerializableModel {
       ),
       guestCount: jsonSerialization['guestCount'] as int,
       status: jsonSerialization['status'] as String?,
+      notes: jsonSerialization['notes'] as String?,
+      email: jsonSerialization['email'] as String?,
       createdAt: _i1.DateTimeJsonExtension.fromJson(
         jsonSerialization['createdAt'],
       ),
@@ -74,6 +80,10 @@ abstract class Reservation implements _i1.SerializableModel {
 
   String status;
 
+  String? notes;
+
+  String? email;
+
   DateTime createdAt;
 
   DateTime? updatedAt;
@@ -89,6 +99,8 @@ abstract class Reservation implements _i1.SerializableModel {
     DateTime? reservationTime,
     int? guestCount,
     String? status,
+    String? notes,
+    String? email,
     DateTime? createdAt,
     DateTime? updatedAt,
   });
@@ -103,6 +115,8 @@ abstract class Reservation implements _i1.SerializableModel {
       'reservationTime': reservationTime.toJson(),
       'guestCount': guestCount,
       'status': status,
+      if (notes != null) 'notes': notes,
+      if (email != null) 'email': email,
       'createdAt': createdAt.toJson(),
       if (updatedAt != null) 'updatedAt': updatedAt?.toJson(),
     };
@@ -125,6 +139,8 @@ class _ReservationImpl extends Reservation {
     required DateTime reservationTime,
     required int guestCount,
     String? status,
+    String? notes,
+    String? email,
     required DateTime createdAt,
     DateTime? updatedAt,
   }) : super._(
@@ -135,6 +151,8 @@ class _ReservationImpl extends Reservation {
          reservationTime: reservationTime,
          guestCount: guestCount,
          status: status,
+         notes: notes,
+         email: email,
          createdAt: createdAt,
          updatedAt: updatedAt,
        );
@@ -151,6 +169,8 @@ class _ReservationImpl extends Reservation {
     DateTime? reservationTime,
     int? guestCount,
     String? status,
+    Object? notes = _Undefined,
+    Object? email = _Undefined,
     DateTime? createdAt,
     Object? updatedAt = _Undefined,
   }) {
@@ -164,6 +184,8 @@ class _ReservationImpl extends Reservation {
       reservationTime: reservationTime ?? this.reservationTime,
       guestCount: guestCount ?? this.guestCount,
       status: status ?? this.status,
+      notes: notes is String? ? notes : this.notes,
+      email: email is String? ? email : this.email,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt is DateTime? ? updatedAt : this.updatedAt,
     );

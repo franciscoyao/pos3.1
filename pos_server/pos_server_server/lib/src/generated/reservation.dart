@@ -22,6 +22,8 @@ abstract class Reservation
     required this.reservationTime,
     required this.guestCount,
     String? status,
+    this.notes,
+    this.email,
     required this.createdAt,
     this.updatedAt,
   }) : status = status ?? 'Pending';
@@ -34,6 +36,8 @@ abstract class Reservation
     required DateTime reservationTime,
     required int guestCount,
     String? status,
+    String? notes,
+    String? email,
     required DateTime createdAt,
     DateTime? updatedAt,
   }) = _ReservationImpl;
@@ -49,6 +53,8 @@ abstract class Reservation
       ),
       guestCount: jsonSerialization['guestCount'] as int,
       status: jsonSerialization['status'] as String?,
+      notes: jsonSerialization['notes'] as String?,
+      email: jsonSerialization['email'] as String?,
       createdAt: _i1.DateTimeJsonExtension.fromJson(
         jsonSerialization['createdAt'],
       ),
@@ -77,6 +83,10 @@ abstract class Reservation
 
   String status;
 
+  String? notes;
+
+  String? email;
+
   DateTime createdAt;
 
   DateTime? updatedAt;
@@ -95,6 +105,8 @@ abstract class Reservation
     DateTime? reservationTime,
     int? guestCount,
     String? status,
+    String? notes,
+    String? email,
     DateTime? createdAt,
     DateTime? updatedAt,
   });
@@ -109,6 +121,8 @@ abstract class Reservation
       'reservationTime': reservationTime.toJson(),
       'guestCount': guestCount,
       'status': status,
+      if (notes != null) 'notes': notes,
+      if (email != null) 'email': email,
       'createdAt': createdAt.toJson(),
       if (updatedAt != null) 'updatedAt': updatedAt?.toJson(),
     };
@@ -125,6 +139,8 @@ abstract class Reservation
       'reservationTime': reservationTime.toJson(),
       'guestCount': guestCount,
       'status': status,
+      if (notes != null) 'notes': notes,
+      if (email != null) 'email': email,
       'createdAt': createdAt.toJson(),
       if (updatedAt != null) 'updatedAt': updatedAt?.toJson(),
     };
@@ -171,6 +187,8 @@ class _ReservationImpl extends Reservation {
     required DateTime reservationTime,
     required int guestCount,
     String? status,
+    String? notes,
+    String? email,
     required DateTime createdAt,
     DateTime? updatedAt,
   }) : super._(
@@ -181,6 +199,8 @@ class _ReservationImpl extends Reservation {
          reservationTime: reservationTime,
          guestCount: guestCount,
          status: status,
+         notes: notes,
+         email: email,
          createdAt: createdAt,
          updatedAt: updatedAt,
        );
@@ -197,6 +217,8 @@ class _ReservationImpl extends Reservation {
     DateTime? reservationTime,
     int? guestCount,
     String? status,
+    Object? notes = _Undefined,
+    Object? email = _Undefined,
     DateTime? createdAt,
     Object? updatedAt = _Undefined,
   }) {
@@ -210,6 +232,8 @@ class _ReservationImpl extends Reservation {
       reservationTime: reservationTime ?? this.reservationTime,
       guestCount: guestCount ?? this.guestCount,
       status: status ?? this.status,
+      notes: notes is String? ? notes : this.notes,
+      email: email is String? ? email : this.email,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt is DateTime? ? updatedAt : this.updatedAt,
     );
@@ -248,6 +272,16 @@ class ReservationUpdateTable extends _i1.UpdateTable<ReservationTable> {
 
   _i1.ColumnValue<String, String> status(String value) => _i1.ColumnValue(
     table.status,
+    value,
+  );
+
+  _i1.ColumnValue<String, String> notes(String? value) => _i1.ColumnValue(
+    table.notes,
+    value,
+  );
+
+  _i1.ColumnValue<String, String> email(String? value) => _i1.ColumnValue(
+    table.email,
     value,
   );
 
@@ -292,6 +326,14 @@ class ReservationTable extends _i1.Table<int?> {
       this,
       hasDefault: true,
     );
+    notes = _i1.ColumnString(
+      'notes',
+      this,
+    );
+    email = _i1.ColumnString(
+      'email',
+      this,
+    );
     createdAt = _i1.ColumnDateTime(
       'createdAt',
       this,
@@ -316,6 +358,10 @@ class ReservationTable extends _i1.Table<int?> {
 
   late final _i1.ColumnString status;
 
+  late final _i1.ColumnString notes;
+
+  late final _i1.ColumnString email;
+
   late final _i1.ColumnDateTime createdAt;
 
   late final _i1.ColumnDateTime updatedAt;
@@ -329,6 +375,8 @@ class ReservationTable extends _i1.Table<int?> {
     reservationTime,
     guestCount,
     status,
+    notes,
+    email,
     createdAt,
     updatedAt,
   ];

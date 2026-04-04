@@ -44,6 +44,7 @@ reservations:
   - update:
   - delete:
   - getByTable:
+  - markAsArrived:
 settings:
   - getSettings:
   - updateSettings:
@@ -61,6 +62,7 @@ tables:
   - getAll:
   - create:
   - update:
+  - delete:
   - mergeTables:
   - moveItemsToTable:
 users:

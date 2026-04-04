@@ -6,7 +6,9 @@ fields:
   customerPhone: String?
   reservationTime: DateTime
   guestCount: int
-  status: String, default='Pending' # Pending, Confirmed, Cancelled, Completed
+  status: String, default='Pending' # Pending, Confirmed, Cancelled, Arrived, Completed
+  notes: String?
+  email: String?
   createdAt: DateTime
   updatedAt: DateTime?
 indexes:
