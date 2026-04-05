@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pos_server_client/pos_server_client.dart';
 import '../main.dart';
+import '../shared/responsive_layout.dart';
 
 class NewOrderView extends StatefulWidget {
   final String? initialTableNo;
@@ -180,28 +181,63 @@ class _NewOrderViewState extends State<NewOrderView> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveLayout.isMobile(context);
+
+    final mainContent = Padding(
+      padding: EdgeInsets.all(isMobile ? 16.0 : 24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildOrderTypeSelector(isMobile),
+          const SizedBox(height: 24),
+          _buildSearchBar(),
+          const SizedBox(height: 24),
+          Expanded(
+            child: isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _buildMenuContent(),
+          ),
+        ],
+      ),
+    );
+
+    if (isMobile) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: mainContent,
+        floatingActionButton: cart.isNotEmpty
+            ? FloatingActionButton.extended(
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.white,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    ),
+                    builder: (context) => SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.85,
+                      child: _buildCart(),
+                    ),
+                  );
+                },
+                backgroundColor: const Color(0xFF0F172A),
+                icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+                label: Text(
+                  '${cart.length} items - €${subtotal.toStringAsFixed(2)}',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              )
+            : null,
+      );
+    }
+
     return Row(
       children: [
         // Main Menu Area
         Expanded(
           flex: 7,
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildOrderTypeSelector(),
-                const SizedBox(height: 24),
-                _buildSearchBar(),
-                const SizedBox(height: 24),
-                Expanded(
-                  child: isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : _buildMenuContent(),
-                ),
-              ],
-            ),
-          ),
+          child: mainContent,
         ),
 
         // Cart Area (Right Sidebar)
@@ -217,7 +253,66 @@ class _NewOrderViewState extends State<NewOrderView> {
     );
   }
 
-  Widget _buildOrderTypeSelector() {
+  Widget _buildOrderTypeSelector(bool isMobile) {
+    final tableSettings = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.grid_view_rounded,
+            size: 20,
+            color: Colors.grey,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextField(
+              controller: _tableController,
+              decoration: const InputDecoration(
+                hintText: 'Table No.',
+                border: InputBorder.none,
+              ),
+            ),
+          ),
+          const Icon(
+            Icons.qr_code_scanner_rounded,
+            size: 20,
+            color: Colors.grey,
+          ),
+        ],
+      ),
+    );
+
+    if (isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Expanded(child: _buildTypeBtn('Dine-In', true)),
+                Expanded(child: _buildTypeBtn('Takeaway', true)),
+              ],
+            ),
+          ),
+          if (orderType == 'Dine-In') ...[
+            const SizedBox(height: 16),
+            tableSettings,
+          ],
+          const SizedBox(height: 16),
+          _buildScheduleButton(),
+        ],
+      );
+    }
+
     return Row(
       children: [
         Container(
@@ -227,44 +322,14 @@ class _NewOrderViewState extends State<NewOrderView> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
-            children: [_buildTypeBtn('Dine-In'), _buildTypeBtn('Takeaway')],
+            children: [_buildTypeBtn('Dine-In', false), _buildTypeBtn('Takeaway', false)],
           ),
         ),
         if (orderType == 'Dine-In') ...[
           const SizedBox(width: 16),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.grid_view_rounded,
-                    size: 20,
-                    color: Colors.grey,
-                  ),
-                  const SizedBox(width: 12),
                   Expanded(
-                    child: TextField(
-                      controller: _tableController,
-                      decoration: const InputDecoration(
-                        hintText: 'Table No.',
-                        border: InputBorder.none,
-                      ),
-                    ),
+                    child: tableSettings,
                   ),
-                  const Icon(
-                    Icons.qr_code_scanner_rounded,
-                    size: 20,
-                    color: Colors.grey,
-                  ),
-                ],
-              ),
-            ),
-          ),
         ],
         const SizedBox(width: 16),
         _buildScheduleButton(),
@@ -338,7 +403,7 @@ class _NewOrderViewState extends State<NewOrderView> {
     }
   }
 
-  Widget _buildTypeBtn(String type) {
+  Widget _buildTypeBtn(String type, bool isMobile) {
     final isSelected = orderType == type;
     return GestureDetector(
       onTap: () {
@@ -350,7 +415,8 @@ class _NewOrderViewState extends State<NewOrderView> {
         }
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+        alignment: isMobile ? Alignment.center : null,
+        padding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 32, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF0F172A) : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
@@ -423,20 +489,9 @@ class _NewOrderViewState extends State<NewOrderView> {
       return matchesSearch && matchesCategory && matchesOrderType;
     }).toList();
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final double width = constraints.maxWidth;
-        int crossAxisCount = 4;
-        if (width < 600) {
-          crossAxisCount = 2;
-        } else if (width < 900) {
-          crossAxisCount = 3;
-        }
-
-        return ListView(
-          children: [
-            if (_searchController.text.isEmpty &&
-                selectedCategoryId == null) ...[
+    return ListView(
+      children: [
+        if (_searchController.text.isEmpty && selectedCategoryId == null) ...[
               const Row(
                 children: [
                   Icon(Icons.trending_up_rounded, size: 20, color: Colors.grey),
@@ -483,23 +538,21 @@ class _NewOrderViewState extends State<NewOrderView> {
             ),
             const SizedBox(height: 24),
 
-            // Grid of Products
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                childAspectRatio: 1.0,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-              ),
-              itemCount: filteredProducts.length,
-              itemBuilder: (context, index) =>
-                  _buildProductCard(filteredProducts[index]),
-            ),
-          ],
-        );
-      },
+        // Grid of Products
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: ResponsiveLayout.isMobile(context) ? 180 : 220,
+            childAspectRatio: ResponsiveLayout.isMobile(context) ? 0.9 : 1.0,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+          ),
+          itemCount: filteredProducts.length,
+          itemBuilder: (context, index) =>
+              _buildProductCard(filteredProducts[index]),
+        ),
+      ],
     );
   }
 

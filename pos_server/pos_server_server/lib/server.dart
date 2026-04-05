@@ -10,6 +10,7 @@ import 'src/web/routes/app_config_route.dart';
 import 'src/web/routes/root.dart';
 import 'src/seed.dart';
 import 'src/scheduled_order_call.dart';
+import 'src/scheduled_reservation_call.dart';
 
 /// The starting point of the Serverpod server.
 void run(List<String> args) async {
@@ -18,6 +19,7 @@ void run(List<String> args) async {
 
   // Register scheduled order call
   pod.registerFutureCall(ScheduledOrderCall(), 'scheduledOrderCall');
+  pod.registerFutureCall(ScheduledReservationCall(), 'scheduledReservationCall');
 
   // Initialize authentication services for the server.
   // Token managers will be used to validate and issue authentication keys,
@@ -84,6 +86,8 @@ void run(List<String> args) async {
   // Start scheduled order activation cycle
   // ignore: deprecated_member_use
   await pod.futureCallWithDelay('scheduledOrderCall', null, Duration.zero);
+  // ignore: deprecated_member_use
+  await pod.futureCallWithDelay('scheduledReservationCall', null, Duration.zero);
 
   // Seed default users
   final session = await pod.createSession();

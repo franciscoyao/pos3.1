@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pos_server_client/pos_server_client.dart';
 import '../main.dart';
+import '../shared/responsive_layout.dart';
 
 class BillsView extends StatefulWidget {
   const BillsView({super.key});
@@ -142,7 +143,9 @@ class _BillsViewState extends State<BillsView> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
-        child: DataTable(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
           headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
           columns: const [
             DataColumn(
@@ -235,6 +238,7 @@ class _BillsViewState extends State<BillsView> {
               )
               .toList(),
         ),
+        ),
       ),
     );
   }
@@ -283,7 +287,7 @@ class _BillsViewState extends State<BillsView> {
               ],
             ),
             content: SizedBox(
-              width: 400,
+              width: ResponsiveLayout.isMobile(context) ? null : 400,
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,

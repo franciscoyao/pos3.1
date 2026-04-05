@@ -11,7 +11,7 @@ late StreamController<PosEvent> posEventStreamController;
 /// Initialize or re-initialize the Serverpod client
 Future<void> initClient() async {
   final prefs = await SharedPreferences.getInstance();
-  final serverIp = prefs.getString('server_ip') ?? '192.168.1.141';
+  final serverIp = prefs.getString('server_ip') ?? '192.168.1.140';
 
   // Normalize 'localhost' for mobile/emulator access if needed
   String baseUrl;

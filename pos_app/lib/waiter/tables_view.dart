@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pos_server_client/pos_server_client.dart';
 import '../main.dart';
+import '../shared/responsive_layout.dart';
 
 class TablesView extends StatefulWidget {
   final Function(String)? onAddItems;
@@ -18,9 +19,7 @@ class _TablesViewState extends State<TablesView> {
   List<RestaurantTable> tables = [];
   List<PosOrder> takeawayOrders = [];
   Map<String, List<PosOrder>> tableOrders = {};
-  List<Reservation> reservations = [];
   bool isLoading = true;
-  String _selectedTab = 'Tables'; // 'Tables' or 'Reservations'
   StreamSubscription? _eventSubscription;
 
   @override
@@ -40,8 +39,7 @@ class _TablesViewState extends State<TablesView> {
     _eventSubscription = posEventStreamController.stream.listen((event) {
       if (event.eventType == 'table_updated' ||
           event.eventType == 'order_created' ||
-          event.eventType == 'order_updated' ||
-          event.eventType == 'reservation_updated') {
+          event.eventType == 'order_updated') {
         _loadDataQuietly();
       }
     });
@@ -60,7 +58,6 @@ class _TablesViewState extends State<TablesView> {
         includeItems: true,
         statusFilter: 'Pending,In Progress,Scheduled',
       );
-      final fetchedReservations = await client.reservations.getAll();
 
       final Map<String, List<PosOrder>> ordersMap = {};
       final List<PosOrder> takeaways = [];
@@ -77,7 +74,6 @@ class _TablesViewState extends State<TablesView> {
           tables = fetchedTables;
           tableOrders = ordersMap;
           takeawayOrders = takeaways;
-          reservations = fetchedReservations;
         });
       }
     } catch (e) {
@@ -142,168 +138,29 @@ class _TablesViewState extends State<TablesView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _selectedTab == 'Tables' ? 'Tables' : 'Reservations',
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _selectedTab == 'Tables'
-                          ? '${tables.length} tables • $activeTables active'
-                          : '${reservations.length} total reservations',
-                      style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                    ),
-                  ],
+                const Text(
+                  'Tables',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
+                  ),
                 ),
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      _buildTabButton('Tables', Icons.grid_view_rounded),
-                      _buildTabButton('Reservations', Icons.event_note_rounded),
-                    ],
-                  ),
+                const SizedBox(height: 8),
+                Text(
+                  '${tables.length} tables • $activeTables active',
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                 ),
               ],
             ),
             const SizedBox(height: 32),
-            if (_selectedTab == 'Tables')
-              _buildTablesGrid()
-            else
-              _buildReservationsView(),
+            _buildTablesGrid(),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildTabButton(String label, IconData icon) {
-    final isSelected = _selectedTab == label;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedTab = label),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: isSelected ? const Color(0xFF0F172A) : Colors.grey[600],
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? const Color(0xFF0F172A) : Colors.grey[600],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildReservationsView() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Upcoming Reservations',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0F172A),
-              ),
-            ),
-            ElevatedButton.icon(
-              onPressed: () => _showReservationDialog(),
-              icon: const Icon(Icons.add, color: Colors.white),
-              label: const Text(
-                'Add Reservation',
-                style: TextStyle(color: Colors.white),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0F172A),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        if (reservations.isEmpty)
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.all(64.0),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.event_busy_rounded,
-                    size: 64,
-                    color: Colors.grey[300],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No reservations found',
-                    style: TextStyle(color: Colors.grey[400], fontSize: 18),
-                  ),
-                ],
-              ),
-            ),
-          )
-        else
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              childAspectRatio: 1.2,
-              crossAxisSpacing: 24,
-              mainAxisSpacing: 24,
-            ),
-            itemCount: reservations.length,
-            itemBuilder: (context, index) {
-              final res = reservations[index];
-              return _buildReservationCard(res);
-            },
-          ),
-      ],
     );
   }
 
@@ -314,11 +171,11 @@ class _TablesViewState extends State<TablesView> {
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 5,
+          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: ResponsiveLayout.isMobile(context) ? 180 : 220,
             childAspectRatio: 0.85,
-            crossAxisSpacing: 24,
-            mainAxisSpacing: 24,
+            crossAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
+            mainAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
           ),
           itemCount: tables.length + 1,
           itemBuilder: (context, index) {
@@ -346,11 +203,11 @@ class _TablesViewState extends State<TablesView> {
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 5,
+            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: ResponsiveLayout.isMobile(context) ? 180 : 220,
               childAspectRatio: 0.85,
-              crossAxisSpacing: 24,
-              mainAxisSpacing: 24,
+              crossAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
+              mainAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
             ),
             itemCount: takeawayOrders.length,
             itemBuilder: (context, index) {
@@ -360,436 +217,6 @@ class _TablesViewState extends State<TablesView> {
         ],
       ],
     );
-  }
-
-  Widget _buildReservationCard(Reservation res) {
-    final timeFormat = DateFormat('hh:mm a');
-    final dateFormat = DateFormat('MMM dd');
-    final isToday = DateUtils.isSameDay(res.reservationTime, DateTime.now());
-    final isUpcoming = res.reservationTime.isAfter(DateTime.now());
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isUpcoming && isToday ? Colors.blue[100]! : Colors.grey[200]!,
-          width: isUpcoming && isToday ? 2 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'Table ${res.tableNumber}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-              _buildStatusBadge(res.status),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            res.customerName,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (res.customerPhone != null && res.customerPhone!.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 4.0),
-              child: Text(
-                res.customerPhone!,
-                style: TextStyle(color: Colors.grey[600], fontSize: 13),
-              ),
-            ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(Icons.people_outline, size: 14, color: Colors.grey[500]),
-              const SizedBox(width: 4),
-              Text(
-                '${res.guestCount} guests',
-                style: TextStyle(color: Colors.grey[500], fontSize: 13),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    dateFormat.format(res.reservationTime),
-                    style: TextStyle(
-                      color: isToday ? Colors.blue : Colors.grey[600],
-                      fontSize: 11,
-                      fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
-                  Text(
-                    timeFormat.format(res.reservationTime),
-                    style: TextStyle(
-                      color: isToday ? Colors.blue : Colors.grey[800],
-                      fontSize: 14,
-                      fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
-                ],
-              ),
-              if (res.status == 'Confirmed')
-                ElevatedButton(
-                  onPressed: () => _markReservationAsArrived(res),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purple,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 4,
-                    ),
-                    minimumSize: const Size(0, 32),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text('Arrive', style: TextStyle(fontSize: 12)),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => _showReservationDialog(reservation: res),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text('Edit'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: () => _confirmDeleteReservation(res),
-                icon: const Icon(Icons.delete_outline, color: Colors.red),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.red[50],
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _markReservationAsArrived(Reservation res) async {
-    try {
-      await client.reservations.markAsArrived(res.id!);
-      _loadDataQuietly();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error updating status: $e')));
-      }
-    }
-  }
-
-  Widget _buildStatusBadge(String status) {
-    Color color;
-    switch (status) {
-      case 'Confirmed':
-        color = Colors.green;
-      case 'Arrived':
-        color = Colors.purple;
-      case 'Cancelled':
-        color = Colors.red;
-      case 'Completed':
-        color = Colors.blue;
-      default:
-        color = Colors.orange;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(
-          color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _showReservationDialog({Reservation? reservation}) async {
-    final isEditing = reservation != null;
-    final nameController = TextEditingController(
-      text: reservation?.customerName,
-    );
-    final phoneController = TextEditingController(
-      text: reservation?.customerPhone,
-    );
-    final tableController = TextEditingController(
-      text: reservation?.tableNumber,
-    );
-    final emailController = TextEditingController(text: reservation?.email);
-    final notesController = TextEditingController(text: reservation?.notes);
-    final guestController = TextEditingController(
-      text: reservation?.guestCount.toString() ?? '2',
-    );
-    DateTime selectedDate = reservation?.reservationTime ?? DateTime.now();
-    TimeOfDay selectedTime = TimeOfDay.fromDateTime(selectedDate);
-    String status = reservation?.status ?? 'Pending';
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(isEditing ? 'Edit Reservation' : 'New Reservation'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Customer Name'),
-                ),
-                TextField(
-                  controller: phoneController,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone (Optional)',
-                  ),
-                ),
-                TextField(
-                  controller: emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Email (Optional)',
-                  ),
-                ),
-                TextField(
-                  controller: notesController,
-                  decoration: const InputDecoration(
-                    labelText: 'Notes (Optional)',
-                  ),
-                  maxLines: 2,
-                ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: tableController,
-                        decoration: const InputDecoration(
-                          labelText: 'Table No',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextField(
-                        controller: guestController,
-                        decoration: const InputDecoration(labelText: 'Guests'),
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  title: const Text('Date'),
-                  subtitle: Text(DateFormat('yyyy-MM-dd').format(selectedDate)),
-                  trailing: const Icon(Icons.calendar_today),
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: selectedDate,
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
-                    );
-                    if (picked != null) {
-                      setDialogState(() => selectedDate = picked);
-                    }
-                  },
-                ),
-                ListTile(
-                  title: const Text('Time'),
-                  subtitle: Text(selectedTime.format(context)),
-                  trailing: const Icon(Icons.access_time),
-                  onTap: () async {
-                    final picked = await showTimePicker(
-                      context: context,
-                      initialTime: selectedTime,
-                    );
-                    if (picked != null) {
-                      setDialogState(() => selectedTime = picked);
-                    }
-                  },
-                ),
-                if (isEditing)
-                  DropdownButtonFormField<String>(
-                    initialValue: status,
-                    decoration: const InputDecoration(labelText: 'Status'),
-                    items:
-                        [
-                              'Pending',
-                              'Confirmed',
-                              'Arrived',
-                              'Cancelled',
-                              'Completed',
-                            ]
-                            .map(
-                              (s) => DropdownMenuItem(value: s, child: Text(s)),
-                            )
-                            .toList(),
-                    onChanged: (val) => setDialogState(() => status = val!),
-                  ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (nameController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please enter customer name')),
-                  );
-                  return;
-                }
-                if (tableController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please enter table number')),
-                  );
-                  return;
-                }
-                Navigator.pop(context, true);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0F172A),
-              ),
-              child: Text(
-                isEditing ? 'Save Changes' : 'Create',
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (result == true) {
-      final finalDateTime = DateTime(
-        selectedDate.year,
-        selectedDate.month,
-        selectedDate.day,
-        selectedTime.hour,
-        selectedTime.minute,
-      );
-
-      final res = Reservation(
-        id: reservation?.id,
-        customerName: nameController.text,
-        customerPhone: phoneController.text,
-        email: emailController.text,
-        notes: notesController.text,
-        tableNumber: tableController.text,
-        guestCount: int.tryParse(guestController.text) ?? 2,
-        reservationTime: finalDateTime,
-        status: status,
-        createdAt: reservation?.createdAt ?? DateTime.now(),
-      );
-
-      try {
-        if (isEditing) {
-          if (res.id == null) {
-            throw Exception('Reservation ID is missing. Cannot update.');
-          }
-          await client.reservations.update(res);
-        } else {
-          await client.reservations.create(res);
-        }
-        _loadDataQuietly();
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error saving reservation: $e')),
-          );
-        }
-      }
-    }
-  }
-
-  Future<void> _confirmDeleteReservation(Reservation res) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cancel Reservation?'),
-        content: Text(
-          'Are you sure you want to cancel the reservation for ${res.customerName}?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('No'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Yes, Cancel'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      try {
-        await client.reservations.delete(res.id!);
-        _loadDataQuietly();
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error cancelling reservation: $e')),
-          );
-        }
-      }
-    }
   }
 
   Future<void> _confirmDeleteTable(RestaurantTable table) async {
@@ -1156,28 +583,20 @@ class _TablesViewState extends State<TablesView> {
         return Align(
           alignment: Alignment.centerRight,
           child: Container(
-            width: 450,
+            width: ResponsiveLayout.isMobile(context) ? MediaQuery.of(context).size.width * 0.9 : 450,
             height: double.infinity,
             color: Colors.white,
             child: _TableDetailsSidebar(
               table: table,
               orders: orders,
-              reservations: reservations
-                  .where((r) => r.tableNumber == table.tableNumber)
-                  .toList(),
+
+              // reservations removed
+
+
               onUpdate: _loadDataQuietly,
               onAddItems: widget.onAddItems,
               onSplit: (t, o) => _showSplitItemsDialog(context, t, o),
               onMerge: (t) => _showMergeTableDialog(context, t),
-              onAddReservation: () => _showReservationDialog(
-                reservation: Reservation(
-                  tableNumber: table.tableNumber,
-                  customerName: '',
-                  reservationTime: DateTime.now().add(const Duration(hours: 1)),
-                  guestCount: 2,
-                  createdAt: DateTime.now(),
-                ),
-              ),
               onCheckout: () {
                 Navigator.pop(context); // Close sidebar
                 if (widget.onCheckout != null) {
@@ -1213,7 +632,7 @@ class _TablesViewState extends State<TablesView> {
       builder: (context) => AlertDialog(
         title: Text('Merge Table ${sourceTable.tableNumber} into...'),
         content: SizedBox(
-          width: 300,
+          width: ResponsiveLayout.isMobile(context) ? MediaQuery.of(context).size.width * 0.9 : 300,
           child: ListView.builder(
             shrinkWrap: true,
             itemCount: otherTables.length,
@@ -1284,7 +703,7 @@ class _TablesViewState extends State<TablesView> {
           return AlertDialog(
             title: const Text('Split Items to New Table'),
             content: SizedBox(
-              width: 500,
+              width: ResponsiveLayout.isMobile(context) ? MediaQuery.of(context).size.width * 0.9 : 500,
               child: isSplitting
                   ? const SizedBox(
                       height: 200,
@@ -1486,26 +905,25 @@ class _TablesViewState extends State<TablesView> {
   }
 }
 
+
 class _TableDetailsSidebar extends StatelessWidget {
   final RestaurantTable table;
   final List<PosOrder> orders;
-  final List<Reservation> reservations;
+
   final VoidCallback onUpdate;
   final Function(String)? onAddItems;
   final Function(RestaurantTable, List<PosOrder>) onSplit;
   final Function(RestaurantTable) onMerge;
-  final VoidCallback onAddReservation;
+
   final VoidCallback onCheckout;
 
   const _TableDetailsSidebar({
     required this.table,
     required this.orders,
-    required this.reservations,
     required this.onUpdate,
     this.onAddItems,
     required this.onSplit,
     required this.onMerge,
-    required this.onAddReservation,
     required this.onCheckout,
   });
 
@@ -1539,9 +957,7 @@ class _TableDetailsSidebar extends StatelessWidget {
         )
         .firstOrNull;
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
+    return Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
           backgroundColor: Colors.white,
@@ -1631,22 +1047,8 @@ class _TableDetailsSidebar extends StatelessWidget {
                 ),
             ],
           ),
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Orders'),
-              Tab(text: 'Reservations'),
-            ],
-            labelColor: Colors.black,
-            indicatorColor: Colors.black,
-          ),
         ),
-        body: TabBarView(
-          children: [
-            _buildOrdersTab(context, isActive, firstOrderWithNif, totalAmount),
-            _buildReservationsTab(context),
-          ],
-        ),
-      ),
+        body: _buildOrdersTab(context, isActive, firstOrderWithNif, totalAmount),
     );
   }
 
@@ -1842,187 +1244,41 @@ class _TableDetailsSidebar extends StatelessWidget {
     );
   }
 
-  Widget _buildReservationsTab(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Reservations',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              TextButton.icon(
-                onPressed: onAddReservation,
-                icon: const Icon(Icons.add),
-                label: const Text('New'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: reservations.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.event_note_outlined,
-                          size: 48,
-                          color: Colors.grey[300],
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'No upcoming reservations',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: reservations.length,
-                    itemBuilder: (context, index) {
-                      final res = reservations[index];
-                      final timeFormat = DateFormat('MMM dd, hh:mm a');
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey[200]!),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  res.customerName,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue[50],
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    res.status,
-                                    style: TextStyle(
-                                      color: Colors.blue[900],
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${res.guestCount} guests',
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontSize: 12,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.access_time,
-                                  size: 14,
-                                  color: Colors.grey,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  timeFormat.format(res.reservationTime),
-                                  style: const TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildOrderItems(PosOrder order) {
-    final timeFormat = DateFormat('hh:mm a');
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[200]!),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.grey[50]!,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(12),
+    if (order.items == null || order.items!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Text(
+            'Order #${order.id ?? ""}',
+            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
+          ),
+        ),
+        ...order.items!.map((item) => Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Row(
+                children: [
+                  Text(
+                    '${item.quantity}x',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(item.productName ?? 'Unknown Product'),
+                  ),
+                  Text(
+                    '€${(item.price * item.quantity).toStringAsFixed(2)}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Order #${order.orderCode?.substring(order.orderCode!.length - 4) ?? 'N/A'}',
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-                Text(
-                  order.createdAt != null
-                      ? timeFormat.format(order.createdAt!)
-                      : 'N/A',
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: (order.items ?? [])
-                  .map(
-                    (item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        children: [
-                          Text(
-                            '${item.quantity}x',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(item.productName ?? 'Unknown'),
-                          const Spacer(),
-                          Text('€${item.totalPrice.toStringAsFixed(2)}'),
-                        ],
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
-        ],
-      ),
+            )),
+        const Divider(),
+      ],
     );
   }
 }

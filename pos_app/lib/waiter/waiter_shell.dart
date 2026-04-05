@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'new_order_view.dart';
 import 'tables_view.dart';
+import 'reservations_view.dart';
 import 'checkout_view.dart';
 import 'order_history_view.dart';
 import 'bills_view.dart';
 import 'printer_view.dart';
 import '../login_screen.dart';
+import '../shared/responsive_layout.dart';
 
 class WaiterShell extends StatefulWidget {
   final String role;
@@ -28,15 +30,41 @@ class _WaiterShellState extends State<WaiterShell> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveLayout.isMobile(context);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
+      appBar: isMobile
+          ? AppBar(
+              backgroundColor: Colors.white,
+              iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
+              title: const Text(
+                'Waiter Dashboard',
+                style: TextStyle(
+                    color: Color(0xFF0F172A),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18),
+              ),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.logout, color: Colors.black87),
+                  onPressed: () => Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  ),
+                ),
+              ],
+              elevation: 0,
+            )
+          : null,
+      drawer: isMobile ? Drawer(child: _buildSidebar()) : null,
       body: Row(
         children: [
-          _buildSidebar(),
+          if (!isMobile) _buildSidebar(),
           Expanded(
             child: Column(
               children: [
-                _buildTopBar(),
+                if (!isMobile) _buildTopBar(),
                 Expanded(child: _buildCurrentView()),
               ],
             ),
@@ -72,6 +100,7 @@ class _WaiterShellState extends State<WaiterShell> {
           ),
           _buildSidebarItem('New Order', Icons.shopping_cart_outlined),
           _buildSidebarItem('Tables', Icons.grid_view_outlined),
+          _buildSidebarItem('Reservations', Icons.event_note_outlined),
           _buildSidebarItem('Checkout', Icons.credit_card_outlined),
           _buildSidebarItem('Orders', Icons.history_outlined),
           _buildSidebarItem('Bills', Icons.request_quote_outlined),
@@ -87,7 +116,12 @@ class _WaiterShellState extends State<WaiterShell> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: InkWell(
-        onTap: () => _switchView(title),
+        onTap: () {
+          _switchView(title);
+          if (ResponsiveLayout.isMobile(context) && Scaffold.of(context).isDrawerOpen) {
+            Navigator.pop(context); // Close drawer
+          }
+        },
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -199,6 +233,8 @@ class _WaiterShellState extends State<WaiterShell> {
             _switchView('Checkout', {'tableNo': tableNo});
           },
         );
+      case 'Reservations':
+        return const ReservationsView();
       case 'Checkout':
         return CheckoutView(initialTableNo: _viewParams?['tableNo']);
       case 'Orders':

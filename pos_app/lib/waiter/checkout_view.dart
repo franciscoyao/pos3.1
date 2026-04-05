@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:pos_server_client/pos_server_client.dart';
 import '../main.dart';
 import '../shared/printer_service.dart';
+import '../shared/responsive_layout.dart';
 
 class CheckoutView extends StatefulWidget {
   final String? initialTableNo;
@@ -181,6 +182,143 @@ class _CheckoutViewState extends State<CheckoutView> {
 
   Widget _buildDetailedCheckout() {
     final order = selectedOrder!;
+    final isMobile = ResponsiveLayout.isMobile(context);
+    
+    final summaryCard = Container(
+      width: isMobile ? double.infinity : 400,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey[100]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Order Summary',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Table ${order.tableNo ?? "N/A"}',
+            style: TextStyle(color: Colors.grey[500]),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            height: isMobile ? 200 : null,
+            child: isMobile 
+              ? ListView.separated(
+                  itemCount: (order.items ?? []).length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final item = order.items![index];
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${item.quantity}x ${item.productName}',
+                          style: TextStyle(color: Colors.grey[700]),
+                        ),
+                        Text(
+                          '€${item.totalPrice.toStringAsFixed(2)}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    );
+                  },
+                )
+              : Expanded(
+                  child: ListView.separated(
+                    itemCount: (order.items ?? []).length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final item = order.items![index];
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${item.quantity}x ${item.productName}',
+                            style: TextStyle(color: Colors.grey[700]),
+                          ),
+                          Text(
+                            '€${item.totalPrice.toStringAsFixed(2)}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+          ),
+          const Divider(height: 32),
+          const SizedBox(height: 8),
+          if (splitMode != 'None') ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Order Total:'),
+                Text('€${order.total.toStringAsFixed(2)}'),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                splitMode == 'None' ? 'Total:' : 'Amount to Pay:',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                '€${amountToPay.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: amountToPay > 0
+                ? () => _finalizePayment(order)
+                : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0F172A),
+              minimumSize: const Size(double.infinity, 56),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Complete Payment',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (isMobile) {
+      return ListView(
+        children: [
+          _buildSplitBillCard(),
+          const SizedBox(height: 24),
+          _buildPaymentMethodCard(),
+          const SizedBox(height: 32),
+          summaryCard,
+        ],
+      );
+    }
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -200,104 +338,7 @@ class _CheckoutViewState extends State<CheckoutView> {
         ),
         const SizedBox(width: 32),
         // Right Column: Order Summary
-        Container(
-          width: 400,
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.grey[100]!),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Order Summary',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Table ${order.tableNo ?? "N/A"}',
-                style: TextStyle(color: Colors.grey[500]),
-              ),
-              const SizedBox(height: 24),
-              Expanded(
-                child: ListView.separated(
-                  itemCount: (order.items ?? []).length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final item = order.items![index];
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '${item.quantity}x ${item.productName}',
-                          style: TextStyle(color: Colors.grey[700]),
-                        ),
-                        Text(
-                          '€${item.totalPrice.toStringAsFixed(2)}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-              const Divider(height: 32),
-              const SizedBox(height: 8),
-              if (splitMode != 'None') ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Order Total:'),
-                    Text('€${order.total.toStringAsFixed(2)}'),
-                  ],
-                ),
-                const SizedBox(height: 8),
-              ],
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    splitMode == 'None' ? 'Total:' : 'Amount to Pay:',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    '€${amountToPay.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: amountToPay > 0
-                    ? () => _finalizePayment(order)
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0F172A),
-                  minimumSize: const Size(double.infinity, 56),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'Complete Payment',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        summaryCard,
       ],
     );
   }
@@ -329,14 +370,17 @@ class _CheckoutViewState extends State<CheckoutView> {
               color: const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Row(
-              children: [
-                _buildSplitTab('None'),
-                _buildSplitTab('Part'),
-                _buildSplitTab('Item'),
-                _buildSplitTab('Seat'),
-                _buildSplitTab('%'),
-              ],
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildSplitTab('None'),
+                  _buildSplitTab('Part'),
+                  _buildSplitTab('Item'),
+                  _buildSplitTab('Seat'),
+                  _buildSplitTab('%'),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 24),
@@ -416,7 +460,10 @@ class _CheckoutViewState extends State<CheckoutView> {
               );
             }),
             const SizedBox(height: 8),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.spaceBetween,
               children: [
                 TextButton.icon(
                   onPressed: () {
@@ -425,7 +472,6 @@ class _CheckoutViewState extends State<CheckoutView> {
                   icon: const Icon(Icons.add_circle_outline),
                   label: const Text('Add Another Customer'),
                 ),
-                const Spacer(),
                 TextButton.icon(
                   onPressed: () {
                     final remaining =
@@ -906,8 +952,11 @@ class _CheckoutViewState extends State<CheckoutView> {
   }
 
   Widget _buildHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 16,
+      runSpacing: 16,
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -978,11 +1027,11 @@ class _CheckoutViewState extends State<CheckoutView> {
 
   Widget _buildOrdersGrid() {
     return GridView.builder(
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
+      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 250,
         childAspectRatio: 0.8,
-        crossAxisSpacing: 24,
-        mainAxisSpacing: 24,
+        crossAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
+        mainAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
       ),
       itemCount: filteredOrders.length,
       itemBuilder: (context, index) =>

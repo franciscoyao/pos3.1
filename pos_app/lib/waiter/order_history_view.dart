@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pos_server_client/pos_server_client.dart';
 import '../main.dart';
+import '../shared/responsive_layout.dart';
 
 class OrderHistoryView extends StatefulWidget {
   final String? stationFilter;
@@ -155,36 +156,39 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
       'Cancelled',
       'Kiosk',
     ];
-    return Row(
-      children: filters
-          .map(
-            (f) => Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: ChoiceChip(
-                label: Text(f),
-                selected: selectedFilter == f,
-                onSelected: (val) {
-                  if (val) {
-                    setState(() => selectedFilter = f);
-                    _loadOrders();
-                  }
-                },
-                backgroundColor: Colors.white,
-                selectedColor: const Color(0xFF0F172A),
-                labelStyle: TextStyle(
-                  color: selectedFilter == f
-                      ? Colors.white
-                      : const Color(0xFF64748B),
-                  fontWeight: FontWeight.bold,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Colors.grey[200]!),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: filters
+            .map(
+              (f) => Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: ChoiceChip(
+                  label: Text(f),
+                  selected: selectedFilter == f,
+                  onSelected: (val) {
+                    if (val) {
+                      setState(() => selectedFilter = f);
+                      _loadOrders();
+                    }
+                  },
+                  backgroundColor: Colors.white,
+                  selectedColor: const Color(0xFF0F172A),
+                  labelStyle: TextStyle(
+                    color: selectedFilter == f
+                        ? Colors.white
+                        : const Color(0xFF64748B),
+                    fontWeight: FontWeight.bold,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.grey[200]!),
+                  ),
                 ),
               ),
-            ),
-          )
-          .toList(),
+            )
+            .toList(),
+      ),
     );
   }
 
@@ -218,6 +222,87 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
   Widget _buildOrderCard(PosOrder order) {
     final timeFormat = DateFormat('hh:mm a, MMM dd');
     final statusColor = _getStatusColor(order.status);
+    final isMobile = ResponsiveLayout.isMobile(context);
+
+    final leftInfo = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'Order #${order.orderCode?.substring(order.orderCode!.length - 4) ?? 'N/A'}',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+            _buildStatusBadge(order.status, statusColor),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          order.createdAt != null
+              ? 'Placed: ${timeFormat.format(order.createdAt!)}'
+              : 'N/A',
+          style: TextStyle(color: Colors.grey[500], fontSize: 14),
+        ),
+        if (order.status == 'Scheduled' && order.scheduledTime != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.schedule_rounded,
+                  size: 14,
+                  color: Colors.blue,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Scheduled: ${timeFormat.format(order.scheduledTime!.toLocal())}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.blue,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 4),
+        Text(
+          'Waiter: ${order.waiterName ?? 'System'} • ${order.orderType ?? 'Dine-In'} ${order.tableNo != null ? ' (Table ${order.tableNo})' : ''}',
+          style: TextStyle(color: Colors.grey[600], fontSize: 14),
+        ),
+      ],
+    );
+
+    final middleItems = Text(
+      (order.items ?? [])
+          .map((i) => '${i.quantity}x ${i.productName}')
+          .join(', '),
+      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+    );
+
+    final rightTotal = Column(
+      crossAxisAlignment: isMobile ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+      children: [
+        Text(
+          '€${order.total.toStringAsFixed(2)}',
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: () => _showOrderDetails(order),
+          child: const Text('View Details'),
+        ),
+      ],
+    );
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -233,101 +318,30 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          // Left: Order Info
-          Expanded(
-            flex: 2,
-            child: Column(
+      child: isMobile
+          ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                leftInfo,
+                const Divider(height: 24),
+                middleItems,
+                const Divider(height: 24),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Order #${order.orderCode?.substring(order.orderCode!.length - 4) ?? 'N/A'}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    _buildStatusBadge(order.status, statusColor),
+                    const Text('Total:', style: TextStyle(color: Colors.grey, fontSize: 16)),
+                    rightTotal,
                   ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  order.createdAt != null
-                      ? 'Placed: ${timeFormat.format(order.createdAt!)}'
-                      : 'N/A',
-                  style: TextStyle(color: Colors.grey[500], fontSize: 14),
-                ),
-                if (order.status == 'Scheduled' && order.scheduledTime != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.schedule_rounded,
-                          size: 14,
-                          color: Colors.blue,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Scheduled for: ${timeFormat.format(order.scheduledTime!.toLocal())}',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.blue,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 4),
-                Text(
-                  'Waiter: ${order.waiterName ?? 'System'} • ${order.orderType ?? 'Dine-In'} ${order.tableNo != null ? ' (Table ${order.tableNo})' : ''}',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                ),
               ],
-            ),
-          ),
-
-          // Middle: Items Preview
-          Expanded(
-            flex: 3,
-            child: Text(
-              (order.items ?? [])
-                  .map((i) => '${i.quantity}x ${i.productName}')
-                  .join(', '),
-              style: TextStyle(color: Colors.grey[600], fontSize: 14),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-
-          // Right: Total & Action
-          Expanded(
-            flex: 1,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            )
+          : Row(
               children: [
-                Text(
-                  '€${order.total.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () => _showOrderDetails(order),
-                  child: const Text('View Details'),
-                ),
+                Expanded(flex: 2, child: leftInfo),
+                Expanded(flex: 3, child: middleItems),
+                Expanded(flex: 1, child: rightTotal),
               ],
             ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -376,7 +390,7 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
           'Order Details #${order.orderCode?.substring(order.orderCode!.length - 4)}',
         ),
         content: SizedBox(
-          width: 400,
+          width: ResponsiveLayout.isMobile(context) ? null : 400,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

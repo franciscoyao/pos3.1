@@ -20,16 +20,14 @@ class CategoryGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < 600;
-        final crossAxisCount = isMobile ? 1 : 3;
-        final childAspectRatio = isMobile ? 2.5 : 1.8;
 
         return GridView.builder(
           padding: isMobile ? const EdgeInsets.all(16) : EdgeInsets.zero,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
+          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 400,
             crossAxisSpacing: 24,
             mainAxisSpacing: 24,
-            childAspectRatio: childAspectRatio,
+            mainAxisExtent: 160,
           ),
           itemCount: categories.length,
           itemBuilder: (context, index) {

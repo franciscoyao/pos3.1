@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_pos_printer_platform_image_3/flutter_pos_printer_platform_image_3.dart';
 import 'package:flutter_esc_pos_utils/flutter_esc_pos_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../shared/responsive_layout.dart';
 
 class PosPrinter {
   final String name;
@@ -215,8 +216,11 @@ class _PrinterViewState extends State<PrinterView> {
   }
 
   Widget _buildHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 16,
+      runSpacing: 16,
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -363,23 +367,18 @@ class _PrinterViewState extends State<PrinterView> {
   }
 
   Widget _buildConfiguredPrintersGrid() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth < 900 ? 1 : 3;
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 24,
-            mainAxisSpacing: 24,
-            childAspectRatio: 1.5,
-          ),
-          itemCount: _configuredPrinters.length,
-          itemBuilder: (context, index) =>
-              _buildPrinterCard(_configuredPrinters[index], index),
-        );
-      },
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 400,
+        crossAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
+        mainAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
+        childAspectRatio: 1.5,
+      ),
+      itemCount: _configuredPrinters.length,
+      itemBuilder: (context, index) =>
+          _buildPrinterCard(_configuredPrinters[index], index),
     );
   }
 

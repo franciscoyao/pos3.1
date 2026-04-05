@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:pos_server_client/pos_server_client.dart';
 import '../main.dart';
 import 'components/menu/menu_widgets.dart';
+import '../shared/responsive_layout.dart';
 
 class UserManagementView extends StatefulWidget {
   const UserManagementView({super.key});
@@ -95,8 +96,11 @@ class _UserManagementViewState extends State<UserManagementView> {
   }
 
   Widget _buildHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 16,
+      runSpacing: 16,
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,49 +148,68 @@ class _UserManagementViewState extends State<UserManagementView> {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.grey[100]!),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey[200]!),
-              ),
-              child: TextField(
-                onChanged: (v) => setState(() => searchQuery = v),
-                decoration: const InputDecoration(
-                  icon: Icon(Icons.search, color: Colors.grey, size: 20),
-                  hintText: 'Search users...',
-                  border: InputBorder.none,
-                  hintStyle: TextStyle(fontSize: 14),
-                ),
-              ),
+      child: ResponsiveLayout.isMobile(context)
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: _buildFilterElements(),
+            )
+          : Row(
+              children: _buildFilterElements(isMobile: false),
             ),
-          ),
-          const SizedBox(width: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[200]!),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: selectedRoleFilter,
-                items: ['All Roles', 'Admin', 'Waiter', 'Kitchen', 'Bar']
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                    .toList(),
-                onChanged: (v) => setState(() => selectedRoleFilter = v!),
-              ),
-            ),
-          ),
-        ],
+    );
+  }
+
+  List<Widget> _buildFilterElements({bool isMobile = true}) {
+    final searchWidget = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: TextField(
+        onChanged: (v) => setState(() => searchQuery = v),
+        decoration: const InputDecoration(
+          icon: Icon(Icons.search, color: Colors.grey, size: 20),
+          hintText: 'Search users...',
+          border: InputBorder.none,
+          hintStyle: TextStyle(fontSize: 14),
+        ),
       ),
     );
+
+    final dropdownWidget = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: selectedRoleFilter,
+          isExpanded: isMobile,
+          items: ['All Roles', 'Admin', 'Waiter', 'Kitchen', 'Bar']
+              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              .toList(),
+          onChanged: (v) => setState(() => selectedRoleFilter = v!),
+        ),
+      ),
+    );
+
+    if (isMobile) {
+      return [
+        searchWidget,
+        const SizedBox(height: 16),
+        dropdownWidget,
+      ];
+    } else {
+      return [
+        Expanded(flex: 3, child: searchWidget),
+        const SizedBox(width: 16),
+        dropdownWidget,
+      ];
+    }
   }
 
   Widget _buildUserTable() {
@@ -219,62 +242,172 @@ class _UserManagementViewState extends State<UserManagementView> {
             ),
           ),
           Expanded(
-            child: SingleChildScrollView(
-              child: DataTable(
-                columnSpacing: 24,
-                horizontalMargin: 24,
-                headingRowColor: WidgetStateProperty.all(
-                  const Color(0xFFF8FAFC),
-                ),
-                columns: const [
-                  DataColumn(
-                    label: Text(
-                      'User',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+            child: ResponsiveLayout.isMobile(context)
+                ? ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: filteredUsers.length,
+                    itemBuilder: (context, index) => _buildMobileUserCard(filteredUsers[index]),
+                  )
+                : SingleChildScrollView(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: DataTable(
+                        columnSpacing: 24,
+                        horizontalMargin: 24,
+                        headingRowColor: WidgetStateProperty.all(
+                          const Color(0xFFF8FAFC),
+                        ),
+                        columns: const [
+                          DataColumn(
+                            label: Text(
+                              'User',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Username',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Role',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'PIN',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Status',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Created',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          DataColumn(
+                            label: Text(
+                              'Actions',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                        rows: filteredUsers.map((u) => _buildUserRow(u)).toList(),
+                      ),
                     ),
                   ),
-                  DataColumn(
-                    label: Text(
-                      'Username',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Role',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'PIN',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Status',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Created',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  DataColumn(
-                    label: Text(
-                      'Actions',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-                rows: filteredUsers.map((u) => _buildUserRow(u)).toList(),
-              ),
-            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMobileUserCard(PosUser u) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 0,
+      color: const Color(0xFFF8FAFC),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(
+                        u.role.toLowerCase() == 'admin'
+                            ? Icons.admin_panel_settings_outlined
+                            : u.role.toLowerCase() == 'kitchen'
+                            ? Icons.restaurant_menu_rounded
+                            : u.role.toLowerCase() == 'bar'
+                            ? Icons.local_bar_rounded
+                            : Icons.person_outline_rounded,
+                        size: 24,
+                        color: Colors.grey[600],
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          u.fullName ?? 'Unnamed User',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      onPressed: () => _showUserDialog(user: u),
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.all(8),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 20),
+                      onPressed:
+                          u.isDefault ? null : () => _confirmDeleteUser(u),
+                      color: u.isDefault ? Colors.grey[300] : Colors.red[400],
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.all(8),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Username:', style: TextStyle(color: Colors.grey[600])),
+                Text(u.username,
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Role:', style: TextStyle(color: Colors.grey[600])),
+                _buildRoleBadge(u.role),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Status:', style: TextStyle(color: Colors.grey[600])),
+                _buildStatusBadge(u.status),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('PIN:', style: TextStyle(color: Colors.grey[600])),
+                Text(u.pin != null ? '••••' : 'None',
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -507,21 +640,23 @@ class _UserDialogState extends State<UserDialog> {
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(isEditing ? 'Edit User' : 'Add User'),
-              Text(
-                isEditing
-                    ? 'Update staff member details'
-                    : 'Create a new staff account',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[500],
-                  fontWeight: FontWeight.normal,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(isEditing ? 'Edit User' : 'Add User'),
+                Text(
+                  isEditing
+                      ? 'Update staff member details'
+                      : 'Create a new staff account',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[500],
+                    fontWeight: FontWeight.normal,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.close),

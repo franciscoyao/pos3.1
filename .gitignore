@@ -110,3 +110,13 @@ pos_server_server/config/test.yaml
 # macOS
 **/macos/Flutter/GeneratedPluginRegistrant.swift
 **/macos/Flutter/ephemeral/Flutter-Generated.xcconfig
+
+# Root-level utility / scratch scripts
+/clean.dart
+/run_analyzer.dart
+
+# Flutter diagnostic / log files
+*.log
+doctor.txt
+build_log.txt
+flutter_*.log

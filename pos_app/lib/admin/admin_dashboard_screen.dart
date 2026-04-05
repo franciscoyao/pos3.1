@@ -6,6 +6,7 @@ import 'checkout_history_view.dart';
 import 'printer_management_view.dart';
 import 'settings_view.dart';
 import '../login_screen.dart';
+import '../shared/responsive_layout.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -19,15 +20,41 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveLayout.isMobile(context);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
+      appBar: isMobile
+          ? AppBar(
+              backgroundColor: Colors.white,
+              iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
+              title: const Text(
+                'Admin Dashboard',
+                style: TextStyle(
+                    color: Color(0xFF0F172A),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18),
+              ),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.logout, color: Colors.black87),
+                  onPressed: () => Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  ),
+                ),
+              ],
+              elevation: 0,
+            )
+          : null,
+      drawer: isMobile ? Drawer(child: _buildSidebar()) : null,
       body: Row(
         children: [
-          _buildSidebar(),
+          if (!isMobile) _buildSidebar(),
           Expanded(
             child: Column(
               children: [
-                _buildTopBar(),
+                if (!isMobile) _buildTopBar(),
                 Expanded(child: _buildCurrentView()),
               ],
             ),
@@ -78,7 +105,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: InkWell(
-        onTap: () => setState(() => _selectedView = title),
+        onTap: () {
+          setState(() => _selectedView = title);
+          if (ResponsiveLayout.isMobile(context) && Scaffold.of(context).isDrawerOpen) {
+            Navigator.pop(context); // Close drawer
+          }
+        },
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

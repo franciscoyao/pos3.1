@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:pos_server_client/pos_server_client.dart';
 import '../main.dart';
 import '../login_screen.dart';
+import '../shared/responsive_layout.dart';
 
 class KioskScreen extends StatefulWidget {
   const KioskScreen({super.key});
@@ -84,25 +85,78 @@ class _KioskScreenState extends State<KioskScreen> {
       return _buildSplashScreen();
     }
 
+    final isMobile = ResponsiveLayout.isMobile(context);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
+      appBar: isMobile
+          ? AppBar(
+              backgroundColor: Colors.white,
+              iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
+              title: const Text(
+                'Takeaway Order',
+                style: TextStyle(
+                    color: Color(0xFF0F172A),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18),
+              ),
+              actions: [
+                Builder(
+                  builder: (ctx) => IconButton(
+                    icon: Stack(
+                      children: [
+                        const Icon(Icons.shopping_cart_outlined, color: Colors.black87),
+                        if (_cart.isNotEmpty)
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 16,
+                                minHeight: 16,
+                              ),
+                              child: Text(
+                                '${_cart.length}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          )
+                      ],
+                    ),
+                    onPressed: () => Scaffold.of(ctx).openEndDrawer(),
+                  ),
+                ),
+              ],
+            )
+          : null,
+      drawer: isMobile ? Drawer(child: _buildCategorySidebar()) : null,
+      endDrawer: isMobile ? Drawer(child: SafeArea(child: _buildCartSidebar())) : null,
       body: Row(
         children: [
           // Left Sidebar: Categories
-          _buildCategorySidebar(),
+          if (!isMobile) _buildCategorySidebar(),
 
           // Main Content: Product Grid
           Expanded(
             child: Column(
               children: [
-                _buildTopBar(),
+                if (!isMobile) _buildTopBar(),
                 Expanded(child: _buildProductGrid()),
               ],
             ),
           ),
 
           // Right Sidebar: Cart Summary
-          _buildCartSidebar(),
+          if (!isMobile) _buildCartSidebar(),
         ],
       ),
     );
@@ -217,7 +271,12 @@ class _KioskScreenState extends State<KioskScreen> {
   Widget _buildCategoryItem(int? id, String name, IconData? icon) {
     final isSelected = _selectedCategoryId == id;
     return InkWell(
-      onTap: () => setState(() => _selectedCategoryId = id),
+      onTap: () {
+        setState(() => _selectedCategoryId = id);
+        if (ResponsiveLayout.isMobile(context) && Scaffold.of(context).isDrawerOpen) {
+          Navigator.pop(context);
+        }
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         width: double.infinity,
@@ -326,12 +385,12 @@ class _KioskScreenState extends State<KioskScreen> {
     }).toList();
 
     return GridView.builder(
-      padding: const EdgeInsets.all(32),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
+      padding: EdgeInsets.all(ResponsiveLayout.isMobile(context) ? 16 : 32),
+      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 250,
         childAspectRatio: 0.85,
-        crossAxisSpacing: 24,
-        mainAxisSpacing: 24,
+        crossAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
+        mainAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
       ),
       itemCount: filteredProducts.length,
       itemBuilder: (context, index) =>
@@ -682,7 +741,7 @@ class _KioskScreenState extends State<KioskScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
         child: Container(
           padding: const EdgeInsets.all(48),
-          width: 500,
+          width: ResponsiveLayout.isMobile(context) ? MediaQuery.of(context).size.width * 0.9 : 500,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import '../main.dart';
+import '../shared/responsive_layout.dart';
 
 class ReportsView extends StatefulWidget {
   const ReportsView({super.key});
@@ -110,14 +111,23 @@ class _ReportsViewState extends State<ReportsView> {
           const SizedBox(height: 32),
           _buildSummaryCards(),
           const SizedBox(height: 32),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(flex: 2, child: _buildSalesByDayChart()),
-              const SizedBox(width: 32),
-              Expanded(flex: 1, child: _buildSalesByCategoryChart()),
-            ],
-          ),
+          if (ResponsiveLayout.isMobile(context))
+            Column(
+              children: [
+                _buildSalesByDayChart(),
+                const SizedBox(height: 32),
+                _buildSalesByCategoryChart(),
+              ],
+            )
+          else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 2, child: _buildSalesByDayChart()),
+                const SizedBox(width: 32),
+                Expanded(flex: 1, child: _buildSalesByCategoryChart()),
+              ],
+            ),
           const SizedBox(height: 32),
           _buildTopSellingItems(),
           const SizedBox(height: 32),
@@ -128,8 +138,11 @@ class _ReportsViewState extends State<ReportsView> {
   }
 
   Widget _buildHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 16,
+      runSpacing: 16,
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -149,10 +162,11 @@ class _ReportsViewState extends State<ReportsView> {
             ),
           ],
         ),
-        Row(
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
           children: [
             _buildExportButton('CSV', Icons.download_outlined),
-            const SizedBox(width: 12),
             _buildExportButton('PDF', Icons.picture_as_pdf_outlined),
           ],
         ),
@@ -190,31 +204,29 @@ class _ReportsViewState extends State<ReportsView> {
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           const SizedBox(height: 16),
-          Row(
+          Wrap(
+            spacing: 16,
+            runSpacing: 16,
             children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: selectedTimeRange,
-                      items: ['Today', 'This Week', 'This Month', 'Custom']
-                          .map(
-                            (e) => DropdownMenuItem(value: e, child: Text(e)),
-                          )
-                          .toList(),
-                      onChanged: (v) => setState(() => selectedTimeRange = v!),
-                    ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedTimeRange,
+                    items: ['Today', 'This Week', 'This Month', 'Custom']
+                        .map(
+                          (e) => DropdownMenuItem(value: e, child: Text(e)),
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() => selectedTimeRange = v!),
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
               _buildDateButton('Start Date', Icons.calendar_today_outlined),
-              const SizedBox(width: 16),
               _buildDateButton('End Date', Icons.calendar_today_outlined),
             ],
           ),
@@ -247,35 +259,53 @@ class _ReportsViewState extends State<ReportsView> {
     final totalOrders = reportData?['total_orders'] ?? 0;
     final avgOrderValue = reportData?['avg_order_value'] ?? 0.0;
 
+    final cards = [
+      _buildSummaryCardInner(
+        'Total Sales',
+        currencyFormat.format(totalRevenue),
+        '',
+        Icons.attach_money,
+      ),
+      _buildSummaryCardInner(
+        'Orders',
+        totalOrders.toString(),
+        '',
+        Icons.shopping_cart_outlined,
+      ),
+      _buildSummaryCardInner(
+        'Avg Order Value',
+        currencyFormat.format(avgOrderValue),
+        '',
+        Icons.trending_up,
+      ),
+      _buildSummaryCardInner('Avg Wait Time', '0 min', '', Icons.access_time),
+    ];
+
+    if (ResponsiveLayout.isMobile(context)) {
+      return Column(
+        children: cards
+            .map((c) => Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: SizedBox(width: double.infinity, child: c),
+                ))
+            .toList(),
+      );
+    }
+
     return Row(
-      children: [
-        _buildSummaryCard(
-          'Total Sales',
-          currencyFormat.format(totalRevenue),
-          '',
-          Icons.attach_money,
-        ),
-        const SizedBox(width: 24),
-        _buildSummaryCard(
-          'Orders',
-          totalOrders.toString(),
-          '',
-          Icons.shopping_cart_outlined,
-        ),
-        const SizedBox(width: 24),
-        _buildSummaryCard(
-          'Avg Order Value',
-          currencyFormat.format(avgOrderValue),
-          '',
-          Icons.trending_up,
-        ),
-        const SizedBox(width: 24),
-        _buildSummaryCard('Avg Wait Time', '0 min', '', Icons.access_time),
-      ],
+      children: cards
+          .map((c) => Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                      right: c == cards.last ? 0 : 24.0),
+                  child: c,
+                ),
+              ))
+          .toList(),
     );
   }
 
-  Widget _buildSummaryCard(
+  Widget _buildSummaryCardInner(
     String title,
     String value,
     String trend,
@@ -283,8 +313,7 @@ class _ReportsViewState extends State<ReportsView> {
   ) {
     final bool hasTrend = trend.isNotEmpty;
     final bool isPositive = trend.contains('+');
-    return Expanded(
-      child: Container(
+    return Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -297,11 +326,15 @@ class _ReportsViewState extends State<ReportsView> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 Icon(icon, color: Colors.grey[400], size: 20),
@@ -325,8 +358,7 @@ class _ReportsViewState extends State<ReportsView> {
             ],
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildSalesByDayChart() {
@@ -370,7 +402,7 @@ class _ReportsViewState extends State<ReportsView> {
           ),
           const SizedBox(height: 32),
           AspectRatio(
-            aspectRatio: 1.7,
+            aspectRatio: ResponsiveLayout.isMobile(context) ? 1.2 : 1.7,
             child: BarChart(
               BarChartData(
                 alignment: BarChartAlignment.spaceAround,
@@ -668,7 +700,7 @@ class _ReportsViewState extends State<ReportsView> {
           ),
           const SizedBox(height: 32),
           AspectRatio(
-            aspectRatio: 2,
+            aspectRatio: ResponsiveLayout.isMobile(context) ? 1.2 : 2.0,
             child: LineChart(
               LineChartData(
                 gridData: FlGridData(

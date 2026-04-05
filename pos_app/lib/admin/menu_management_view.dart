@@ -296,8 +296,11 @@ class _MenuManagementViewState extends State<MenuManagementView>
       color: Colors.white,
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 16,
+            runSpacing: 16,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -321,7 +324,10 @@ class _MenuManagementViewState extends State<MenuManagementView>
                     ),
                 ],
               ),
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   if (selectedProductIds.isNotEmpty) ...[
                     Text(
@@ -515,11 +521,11 @@ class _MenuManagementViewState extends State<MenuManagementView>
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: isMobile ? 1 : 3,
-        crossAxisSpacing: 24,
-        mainAxisSpacing: 24,
-        childAspectRatio: 0.85,
+      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 300,
+        crossAxisSpacing: isMobile ? 16 : 24,
+        mainAxisSpacing: isMobile ? 16 : 24,
+        mainAxisExtent: 360, // Fixed height to prevent overflow
       ),
       itemCount: gridProducts.length,
       itemBuilder: (context, index) => _buildProductCard(gridProducts[index]),
@@ -828,10 +834,13 @@ class _MenuManagementViewState extends State<MenuManagementView>
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.grey[100]!),
       ),
-      child: Row(
+      child: Wrap(
+        spacing: 16,
+        runSpacing: 16,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Expanded(
-            flex: 3,
+          SizedBox(
+            width: 300,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
@@ -850,7 +859,6 @@ class _MenuManagementViewState extends State<MenuManagementView>
               ),
             ),
           ),
-          const SizedBox(width: 16),
           _buildFilterDropdown(
             label: 'Type',
             value: selectedType!,

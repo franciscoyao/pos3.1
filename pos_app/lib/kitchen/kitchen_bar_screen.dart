@@ -8,6 +8,7 @@ import '../admin/printer_management_view.dart';
 import '../admin/settings_view.dart';
 import '../waiter/order_history_view.dart';
 import '../shared/printer_service.dart';
+import '../shared/responsive_layout.dart';
 
 class KitchenBarScreen extends StatefulWidget {
   final String station; // 'Kitchen' or 'Bar'
@@ -59,6 +60,23 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
         stationFilter: widget.station,
       );
       if (mounted) {
+        // Auto-print newly incoming pending orders
+        if (allOrders.isNotEmpty) {
+          final existingPendingIds =
+              allOrders.where((o) => o.status == 'Pending').map((o) => o.id).toSet();
+          final newPendingOrders = fetched
+              .where((o) => o.status == 'Pending' && !existingPendingIds.contains(o.id))
+              .toList();
+
+          for (final order in newPendingOrders) {
+            PrinterService().printKOT(
+              order,
+              station: widget.station,
+              items: order.items ?? [],
+            );
+          }
+        }
+
         setState(() {
           allOrders = fetched;
         });
@@ -228,9 +246,9 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
               Navigator.pop(context);
               showDialog(
                 context: context,
-                builder: (_) => Dialog(
+                builder: (ctx) => Dialog(
                   child: SizedBox(
-                    width: 1000,
+                    width: ResponsiveLayout.isMobile(ctx) ? MediaQuery.of(ctx).size.width * 0.9 : 1000,
                     height: 800,
                     child: OrderHistoryView(stationFilter: widget.station),
                   ),
@@ -245,11 +263,11 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
               Navigator.pop(context);
               showDialog(
                 context: context,
-                builder: (_) => const Dialog(
+                builder: (ctx) => Dialog(
                   child: SizedBox(
-                    width: 800,
+                    width: ResponsiveLayout.isMobile(ctx) ? MediaQuery.of(ctx).size.width * 0.9 : 800,
                     height: 600,
-                    child: PrinterManagementView(),
+                    child: const PrinterManagementView(),
                   ),
                 ),
               );
@@ -262,11 +280,11 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
               Navigator.pop(context);
               showDialog(
                 context: context,
-                builder: (_) => const Dialog(
+                builder: (ctx) => Dialog(
                   child: SizedBox(
-                    width: 800,
+                    width: ResponsiveLayout.isMobile(ctx) ? MediaQuery.of(ctx).size.width * 0.9 : 800,
                     height: 600,
-                    child: SettingsView(),
+                    child: const SettingsView(),
                   ),
                 ),
               );
@@ -278,70 +296,88 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
   }
 
   Widget _buildKanbanBoard() {
+    final isMobile = ResponsiveLayout.isMobile(context);
+    final columns = [
+      _buildKanbanColumn('Scheduled', 'Scheduled', isMobile),
+      if (!isMobile) const SizedBox(width: 24),
+      _buildKanbanColumn('Pending', 'Pending', isMobile),
+      if (!isMobile) const SizedBox(width: 24),
+      _buildKanbanColumn('In Progress', 'In Progress', isMobile),
+      if (!isMobile) const SizedBox(width: 24),
+      _buildKanbanColumn('Ready', 'Ready', isMobile),
+    ];
+
+    if (isMobile) {
+      return ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        children: columns,
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildKanbanColumn('Scheduled', 'Scheduled'),
-          const SizedBox(width: 24),
-          _buildKanbanColumn('Pending', 'Pending'),
-          const SizedBox(width: 24),
-          _buildKanbanColumn('In Progress', 'In Progress'),
-          const SizedBox(width: 24),
-          _buildKanbanColumn('Ready', 'Ready'),
-        ],
+        children: columns,
       ),
     );
   }
 
-  Widget _buildKanbanColumn(String title, String status) {
+  Widget _buildKanbanColumn(String title, String status, bool isMobile) {
     final orders = allOrders.where((o) => o.status == status).toList();
-    return Expanded(
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  title,
+    final child = Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${orders.length}',
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF0F172A),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE2E8F0),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${orders.length}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: orders.length,
-              itemBuilder: (context, index) => _buildOrderCard(orders[index]),
-            ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: orders.length,
+            itemBuilder: (context, index) => _buildOrderCard(orders[index]),
           ),
-        ],
-      ),
+        ),
+      ],
     );
+
+    if (isMobile) {
+      return Container(
+        width: 300,
+        margin: const EdgeInsets.only(right: 16),
+        child: child,
+      );
+    }
+    return Expanded(child: child);
   }
 
   Widget _buildOrderCard(PosOrder order) {
