@@ -41,6 +41,7 @@ Thumbs.db
 pos_server_server/generated/
 pos_server_server/migrations/
 pos_server_server/docker-compose.yaml
+pos_server_server/config/passwords.yaml
 pos_server_server/config/production.yaml
 pos_server_server/config/staging.yaml
 pos_server_server/config/test.yaml
