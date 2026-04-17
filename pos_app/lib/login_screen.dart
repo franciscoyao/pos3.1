@@ -102,6 +102,7 @@ class _LoginScreenState extends State<LoginScreen>
                         await prefs.setString('server_ip', newIp);
                         await initClient();
                         if (!context.mounted) return;
+                        setState(() {}); // Update the top-right indicator
                         Navigator.of(context).pop();
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -167,7 +168,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _loadIp() async {
     final prefs = await SharedPreferences.getInstance();
-    _ipController.text = prefs.getString('server_ip') ?? '192.168.1.140';
+    _ipController.text = prefs.getString('server_ip') ?? '192.168.1.203';
   }
 
   void _onRoleSelected(String role) {
@@ -286,6 +287,48 @@ class _LoginScreenState extends State<LoginScreen>
       backgroundColor: const Color(0xFF0F172A),
       body: Stack(
         children: [
+          // Server IP indicator at the top
+          Positioned(
+            top: 40,
+            right: 24,
+            child: InkWell(
+              onTap: _showServerSetup,
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.dns_outlined,
+                      color: Colors.white70,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _ipController.text.isEmpty
+                          ? 'Setup Server'
+                          : _ipController.text,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),

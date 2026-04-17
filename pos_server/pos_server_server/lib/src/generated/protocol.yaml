@@ -71,5 +71,3 @@ users:
   - update:
   - delete:
   - login:
-greeting:
-  - hello:

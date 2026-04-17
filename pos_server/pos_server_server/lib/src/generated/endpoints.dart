@@ -24,18 +24,17 @@ import '../endpoints/settings_endpoint.dart' as _i11;
 import '../endpoints/subcategories_endpoint.dart' as _i12;
 import '../endpoints/tables_endpoint.dart' as _i13;
 import '../endpoints/users_endpoint.dart' as _i14;
-import '../greetings/greeting_endpoint.dart' as _i15;
-import 'package:pos_server_server/src/generated/checkout_item.dart' as _i16;
-import 'package:pos_server_server/src/generated/order_item.dart' as _i17;
-import 'package:pos_server_server/src/generated/order.dart' as _i18;
-import 'package:pos_server_server/src/generated/product.dart' as _i19;
-import 'package:pos_server_server/src/generated/reservation.dart' as _i20;
-import 'package:pos_server_server/src/generated/settings.dart' as _i21;
-import 'package:pos_server_server/src/generated/pos_user.dart' as _i22;
+import 'package:pos_server_server/src/generated/checkout_item.dart' as _i15;
+import 'package:pos_server_server/src/generated/order_item.dart' as _i16;
+import 'package:pos_server_server/src/generated/order.dart' as _i17;
+import 'package:pos_server_server/src/generated/product.dart' as _i18;
+import 'package:pos_server_server/src/generated/reservation.dart' as _i19;
+import 'package:pos_server_server/src/generated/settings.dart' as _i20;
+import 'package:pos_server_server/src/generated/pos_user.dart' as _i21;
 import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
-    as _i23;
+    as _i22;
 import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
-    as _i24;
+    as _i23;
 
 class Endpoints extends _i1.EndpointDispatch {
   @override
@@ -117,12 +116,6 @@ class Endpoints extends _i1.EndpointDispatch {
         ..initialize(
           server,
           'users',
-          null,
-        ),
-      'greeting': _i15.GreetingEndpoint()
-        ..initialize(
-          server,
-          'greeting',
           null,
         ),
     };
@@ -509,7 +502,7 @@ class Endpoints extends _i1.EndpointDispatch {
             ),
             'itemsToPay': _i1.ParameterDescription(
               name: 'itemsToPay',
-              type: _i1.getType<List<_i16.CheckoutItem>?>(),
+              type: _i1.getType<List<_i15.CheckoutItem>?>(),
               nullable: true,
             ),
           },
@@ -668,7 +661,7 @@ class Endpoints extends _i1.EndpointDispatch {
             ),
             'items': _i1.ParameterDescription(
               name: 'items',
-              type: _i1.getType<List<_i17.OrderItem>>(),
+              type: _i1.getType<List<_i16.OrderItem>>(),
               nullable: false,
             ),
             'scheduledTime': _i1.ParameterDescription(
@@ -722,7 +715,7 @@ class Endpoints extends _i1.EndpointDispatch {
           params: {
             'order': _i1.ParameterDescription(
               name: 'order',
-              type: _i1.getType<_i18.PosOrder>(),
+              type: _i1.getType<_i17.PosOrder>(),
               nullable: false,
             ),
           },
@@ -884,7 +877,7 @@ class Endpoints extends _i1.EndpointDispatch {
           params: {
             'product': _i1.ParameterDescription(
               name: 'product',
-              type: _i1.getType<_i19.Product>(),
+              type: _i1.getType<_i18.Product>(),
               nullable: false,
             ),
           },
@@ -907,7 +900,7 @@ class Endpoints extends _i1.EndpointDispatch {
             ),
             'product': _i1.ParameterDescription(
               name: 'product',
-              type: _i1.getType<_i19.Product>(),
+              type: _i1.getType<_i18.Product>(),
               nullable: false,
             ),
           },
@@ -1027,7 +1020,7 @@ class Endpoints extends _i1.EndpointDispatch {
           params: {
             'reservation': _i1.ParameterDescription(
               name: 'reservation',
-              type: _i1.getType<_i20.Reservation>(),
+              type: _i1.getType<_i19.Reservation>(),
               nullable: false,
             ),
           },
@@ -1047,7 +1040,7 @@ class Endpoints extends _i1.EndpointDispatch {
           params: {
             'reservation': _i1.ParameterDescription(
               name: 'reservation',
-              type: _i1.getType<_i20.Reservation>(),
+              type: _i1.getType<_i19.Reservation>(),
               nullable: false,
             ),
           },
@@ -1143,7 +1136,7 @@ class Endpoints extends _i1.EndpointDispatch {
           params: {
             'settings': _i1.ParameterDescription(
               name: 'settings',
-              type: _i1.getType<_i21.Settings>(),
+              type: _i1.getType<_i20.Settings>(),
               nullable: false,
             ),
           },
@@ -1488,7 +1481,7 @@ class Endpoints extends _i1.EndpointDispatch {
           params: {
             'user': _i1.ParameterDescription(
               name: 'user',
-              type: _i1.getType<_i22.PosUser>(),
+              type: _i1.getType<_i21.PosUser>(),
               nullable: false,
             ),
           },
@@ -1511,7 +1504,7 @@ class Endpoints extends _i1.EndpointDispatch {
             ),
             'user': _i1.ParameterDescription(
               name: 'user',
-              type: _i1.getType<_i22.PosUser>(),
+              type: _i1.getType<_i21.PosUser>(),
               nullable: false,
             ),
           },
@@ -1575,33 +1568,9 @@ class Endpoints extends _i1.EndpointDispatch {
         ),
       },
     );
-    connectors['greeting'] = _i1.EndpointConnector(
-      name: 'greeting',
-      endpoint: endpoints['greeting']!,
-      methodConnectors: {
-        'hello': _i1.MethodConnector(
-          name: 'hello',
-          params: {
-            'name': _i1.ParameterDescription(
-              name: 'name',
-              type: _i1.getType<String>(),
-              nullable: false,
-            ),
-          },
-          call:
-              (
-                _i1.Session session,
-                Map<String, dynamic> params,
-              ) async => (endpoints['greeting'] as _i15.GreetingEndpoint).hello(
-                session,
-                params['name'],
-              ),
-        ),
-      },
-    );
-    modules['serverpod_auth_idp'] = _i23.Endpoints()
+    modules['serverpod_auth_idp'] = _i22.Endpoints()
       ..initializeEndpoints(server);
-    modules['serverpod_auth_core'] = _i24.Endpoints()
+    modules['serverpod_auth_core'] = _i23.Endpoints()
       ..initializeEndpoints(server);
   }
 }

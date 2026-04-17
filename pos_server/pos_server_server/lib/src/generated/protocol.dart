@@ -21,33 +21,31 @@ import 'bill_item.dart' as _i6;
 import 'bill_with_items.dart' as _i7;
 import 'category.dart' as _i8;
 import 'checkout_item.dart' as _i9;
-import 'greetings/greeting.dart' as _i10;
-import 'order.dart' as _i11;
-import 'order_item.dart' as _i12;
-import 'pos_event.dart' as _i13;
-import 'pos_user.dart' as _i14;
-import 'product.dart' as _i15;
-import 'product_extra.dart' as _i16;
-import 'reservation.dart' as _i17;
-import 'restaurant_table.dart' as _i18;
-import 'settings.dart' as _i19;
-import 'subcategory.dart' as _i20;
-import 'package:pos_server_server/src/generated/category.dart' as _i21;
-import 'package:pos_server_server/src/generated/checkout_item.dart' as _i22;
-import 'package:pos_server_server/src/generated/bill.dart' as _i23;
-import 'package:pos_server_server/src/generated/order.dart' as _i24;
-import 'package:pos_server_server/src/generated/order_item.dart' as _i25;
-import 'package:pos_server_server/src/generated/product.dart' as _i26;
-import 'package:pos_server_server/src/generated/reservation.dart' as _i27;
-import 'package:pos_server_server/src/generated/subcategory.dart' as _i28;
-import 'package:pos_server_server/src/generated/restaurant_table.dart' as _i29;
-import 'package:pos_server_server/src/generated/pos_user.dart' as _i30;
+import 'order.dart' as _i10;
+import 'order_item.dart' as _i11;
+import 'pos_event.dart' as _i12;
+import 'pos_user.dart' as _i13;
+import 'product.dart' as _i14;
+import 'product_extra.dart' as _i15;
+import 'reservation.dart' as _i16;
+import 'restaurant_table.dart' as _i17;
+import 'settings.dart' as _i18;
+import 'subcategory.dart' as _i19;
+import 'package:pos_server_server/src/generated/category.dart' as _i20;
+import 'package:pos_server_server/src/generated/checkout_item.dart' as _i21;
+import 'package:pos_server_server/src/generated/bill.dart' as _i22;
+import 'package:pos_server_server/src/generated/order.dart' as _i23;
+import 'package:pos_server_server/src/generated/order_item.dart' as _i24;
+import 'package:pos_server_server/src/generated/product.dart' as _i25;
+import 'package:pos_server_server/src/generated/reservation.dart' as _i26;
+import 'package:pos_server_server/src/generated/subcategory.dart' as _i27;
+import 'package:pos_server_server/src/generated/restaurant_table.dart' as _i28;
+import 'package:pos_server_server/src/generated/pos_user.dart' as _i29;
 export 'bill.dart';
 export 'bill_item.dart';
 export 'bill_with_items.dart';
 export 'category.dart';
 export 'checkout_item.dart';
-export 'greetings/greeting.dart';
 export 'order.dart';
 export 'order_item.dart';
 export 'pos_event.dart';
@@ -1201,38 +1199,35 @@ class Protocol extends _i1.SerializationManagerServer {
     if (t == _i9.CheckoutItem) {
       return _i9.CheckoutItem.fromJson(data) as T;
     }
-    if (t == _i10.Greeting) {
-      return _i10.Greeting.fromJson(data) as T;
+    if (t == _i10.PosOrder) {
+      return _i10.PosOrder.fromJson(data) as T;
     }
-    if (t == _i11.PosOrder) {
-      return _i11.PosOrder.fromJson(data) as T;
+    if (t == _i11.OrderItem) {
+      return _i11.OrderItem.fromJson(data) as T;
     }
-    if (t == _i12.OrderItem) {
-      return _i12.OrderItem.fromJson(data) as T;
+    if (t == _i12.PosEvent) {
+      return _i12.PosEvent.fromJson(data) as T;
     }
-    if (t == _i13.PosEvent) {
-      return _i13.PosEvent.fromJson(data) as T;
+    if (t == _i13.PosUser) {
+      return _i13.PosUser.fromJson(data) as T;
     }
-    if (t == _i14.PosUser) {
-      return _i14.PosUser.fromJson(data) as T;
+    if (t == _i14.Product) {
+      return _i14.Product.fromJson(data) as T;
     }
-    if (t == _i15.Product) {
-      return _i15.Product.fromJson(data) as T;
+    if (t == _i15.ProductExtra) {
+      return _i15.ProductExtra.fromJson(data) as T;
     }
-    if (t == _i16.ProductExtra) {
-      return _i16.ProductExtra.fromJson(data) as T;
+    if (t == _i16.Reservation) {
+      return _i16.Reservation.fromJson(data) as T;
     }
-    if (t == _i17.Reservation) {
-      return _i17.Reservation.fromJson(data) as T;
+    if (t == _i17.RestaurantTable) {
+      return _i17.RestaurantTable.fromJson(data) as T;
     }
-    if (t == _i18.RestaurantTable) {
-      return _i18.RestaurantTable.fromJson(data) as T;
+    if (t == _i18.Settings) {
+      return _i18.Settings.fromJson(data) as T;
     }
-    if (t == _i19.Settings) {
-      return _i19.Settings.fromJson(data) as T;
-    }
-    if (t == _i20.Subcategory) {
-      return _i20.Subcategory.fromJson(data) as T;
+    if (t == _i19.Subcategory) {
+      return _i19.Subcategory.fromJson(data) as T;
     }
     if (t == _i1.getType<_i5.Bill?>()) {
       return (data != null ? _i5.Bill.fromJson(data) : null) as T;
@@ -1249,96 +1244,93 @@ class Protocol extends _i1.SerializationManagerServer {
     if (t == _i1.getType<_i9.CheckoutItem?>()) {
       return (data != null ? _i9.CheckoutItem.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i10.Greeting?>()) {
-      return (data != null ? _i10.Greeting.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i10.PosOrder?>()) {
+      return (data != null ? _i10.PosOrder.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i11.PosOrder?>()) {
-      return (data != null ? _i11.PosOrder.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i11.OrderItem?>()) {
+      return (data != null ? _i11.OrderItem.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i12.OrderItem?>()) {
-      return (data != null ? _i12.OrderItem.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i12.PosEvent?>()) {
+      return (data != null ? _i12.PosEvent.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i13.PosEvent?>()) {
-      return (data != null ? _i13.PosEvent.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i13.PosUser?>()) {
+      return (data != null ? _i13.PosUser.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i14.PosUser?>()) {
-      return (data != null ? _i14.PosUser.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i14.Product?>()) {
+      return (data != null ? _i14.Product.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i15.Product?>()) {
-      return (data != null ? _i15.Product.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i15.ProductExtra?>()) {
+      return (data != null ? _i15.ProductExtra.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i16.ProductExtra?>()) {
-      return (data != null ? _i16.ProductExtra.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i16.Reservation?>()) {
+      return (data != null ? _i16.Reservation.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i17.Reservation?>()) {
-      return (data != null ? _i17.Reservation.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i17.RestaurantTable?>()) {
+      return (data != null ? _i17.RestaurantTable.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i18.RestaurantTable?>()) {
-      return (data != null ? _i18.RestaurantTable.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i18.Settings?>()) {
+      return (data != null ? _i18.Settings.fromJson(data) : null) as T;
     }
-    if (t == _i1.getType<_i19.Settings?>()) {
-      return (data != null ? _i19.Settings.fromJson(data) : null) as T;
-    }
-    if (t == _i1.getType<_i20.Subcategory?>()) {
-      return (data != null ? _i20.Subcategory.fromJson(data) : null) as T;
+    if (t == _i1.getType<_i19.Subcategory?>()) {
+      return (data != null ? _i19.Subcategory.fromJson(data) : null) as T;
     }
     if (t == List<_i6.BillItem>) {
       return (data as List).map((e) => deserialize<_i6.BillItem>(e)).toList()
           as T;
     }
-    if (t == List<_i12.OrderItem>) {
-      return (data as List).map((e) => deserialize<_i12.OrderItem>(e)).toList()
+    if (t == List<_i11.OrderItem>) {
+      return (data as List).map((e) => deserialize<_i11.OrderItem>(e)).toList()
           as T;
     }
-    if (t == _i1.getType<List<_i12.OrderItem>?>()) {
+    if (t == _i1.getType<List<_i11.OrderItem>?>()) {
       return (data != null
               ? (data as List)
-                    .map((e) => deserialize<_i12.OrderItem>(e))
+                    .map((e) => deserialize<_i11.OrderItem>(e))
                     .toList()
               : null)
           as T;
     }
-    if (t == List<_i16.ProductExtra>) {
+    if (t == List<_i15.ProductExtra>) {
       return (data as List)
-              .map((e) => deserialize<_i16.ProductExtra>(e))
+              .map((e) => deserialize<_i15.ProductExtra>(e))
               .toList()
           as T;
     }
-    if (t == _i1.getType<List<_i16.ProductExtra>?>()) {
+    if (t == _i1.getType<List<_i15.ProductExtra>?>()) {
       return (data != null
               ? (data as List)
-                    .map((e) => deserialize<_i16.ProductExtra>(e))
+                    .map((e) => deserialize<_i15.ProductExtra>(e))
                     .toList()
               : null)
           as T;
     }
-    if (t == List<_i21.Category>) {
-      return (data as List).map((e) => deserialize<_i21.Category>(e)).toList()
+    if (t == List<_i20.Category>) {
+      return (data as List).map((e) => deserialize<_i20.Category>(e)).toList()
           as T;
     }
-    if (t == List<_i22.CheckoutItem>) {
+    if (t == List<_i21.CheckoutItem>) {
       return (data as List)
-              .map((e) => deserialize<_i22.CheckoutItem>(e))
+              .map((e) => deserialize<_i21.CheckoutItem>(e))
               .toList()
           as T;
     }
-    if (t == _i1.getType<List<_i22.CheckoutItem>?>()) {
+    if (t == _i1.getType<List<_i21.CheckoutItem>?>()) {
       return (data != null
               ? (data as List)
-                    .map((e) => deserialize<_i22.CheckoutItem>(e))
+                    .map((e) => deserialize<_i21.CheckoutItem>(e))
                     .toList()
               : null)
           as T;
     }
-    if (t == List<_i23.Bill>) {
-      return (data as List).map((e) => deserialize<_i23.Bill>(e)).toList() as T;
+    if (t == List<_i22.Bill>) {
+      return (data as List).map((e) => deserialize<_i22.Bill>(e)).toList() as T;
     }
-    if (t == List<_i24.PosOrder>) {
-      return (data as List).map((e) => deserialize<_i24.PosOrder>(e)).toList()
+    if (t == List<_i23.PosOrder>) {
+      return (data as List).map((e) => deserialize<_i23.PosOrder>(e)).toList()
           as T;
     }
-    if (t == List<_i25.OrderItem>) {
-      return (data as List).map((e) => deserialize<_i25.OrderItem>(e)).toList()
+    if (t == List<_i24.OrderItem>) {
+      return (data as List).map((e) => deserialize<_i24.OrderItem>(e)).toList()
           as T;
     }
     if (t == List<Map<String, dynamic>>) {
@@ -1353,33 +1345,33 @@ class Protocol extends _i1.SerializationManagerServer {
           )
           as T;
     }
-    if (t == List<_i26.Product>) {
-      return (data as List).map((e) => deserialize<_i26.Product>(e)).toList()
+    if (t == List<_i25.Product>) {
+      return (data as List).map((e) => deserialize<_i25.Product>(e)).toList()
           as T;
     }
-    if (t == List<_i27.Reservation>) {
+    if (t == List<_i26.Reservation>) {
       return (data as List)
-              .map((e) => deserialize<_i27.Reservation>(e))
+              .map((e) => deserialize<_i26.Reservation>(e))
               .toList()
           as T;
     }
-    if (t == List<_i28.Subcategory>) {
+    if (t == List<_i27.Subcategory>) {
       return (data as List)
-              .map((e) => deserialize<_i28.Subcategory>(e))
+              .map((e) => deserialize<_i27.Subcategory>(e))
               .toList()
           as T;
     }
-    if (t == List<_i29.RestaurantTable>) {
+    if (t == List<_i28.RestaurantTable>) {
       return (data as List)
-              .map((e) => deserialize<_i29.RestaurantTable>(e))
+              .map((e) => deserialize<_i28.RestaurantTable>(e))
               .toList()
           as T;
     }
     if (t == List<int>) {
       return (data as List).map((e) => deserialize<int>(e)).toList() as T;
     }
-    if (t == List<_i30.PosUser>) {
-      return (data as List).map((e) => deserialize<_i30.PosUser>(e)).toList()
+    if (t == List<_i29.PosUser>) {
+      return (data as List).map((e) => deserialize<_i29.PosUser>(e)).toList()
           as T;
     }
     try {
@@ -1401,17 +1393,16 @@ class Protocol extends _i1.SerializationManagerServer {
       _i7.BillWithItems => 'BillWithItems',
       _i8.Category => 'Category',
       _i9.CheckoutItem => 'CheckoutItem',
-      _i10.Greeting => 'Greeting',
-      _i11.PosOrder => 'PosOrder',
-      _i12.OrderItem => 'OrderItem',
-      _i13.PosEvent => 'PosEvent',
-      _i14.PosUser => 'PosUser',
-      _i15.Product => 'Product',
-      _i16.ProductExtra => 'ProductExtra',
-      _i17.Reservation => 'Reservation',
-      _i18.RestaurantTable => 'RestaurantTable',
-      _i19.Settings => 'Settings',
-      _i20.Subcategory => 'Subcategory',
+      _i10.PosOrder => 'PosOrder',
+      _i11.OrderItem => 'OrderItem',
+      _i12.PosEvent => 'PosEvent',
+      _i13.PosUser => 'PosUser',
+      _i14.Product => 'Product',
+      _i15.ProductExtra => 'ProductExtra',
+      _i16.Reservation => 'Reservation',
+      _i17.RestaurantTable => 'RestaurantTable',
+      _i18.Settings => 'Settings',
+      _i19.Subcategory => 'Subcategory',
       _ => null,
     };
   }
@@ -1436,27 +1427,25 @@ class Protocol extends _i1.SerializationManagerServer {
         return 'Category';
       case _i9.CheckoutItem():
         return 'CheckoutItem';
-      case _i10.Greeting():
-        return 'Greeting';
-      case _i11.PosOrder():
+      case _i10.PosOrder():
         return 'PosOrder';
-      case _i12.OrderItem():
+      case _i11.OrderItem():
         return 'OrderItem';
-      case _i13.PosEvent():
+      case _i12.PosEvent():
         return 'PosEvent';
-      case _i14.PosUser():
+      case _i13.PosUser():
         return 'PosUser';
-      case _i15.Product():
+      case _i14.Product():
         return 'Product';
-      case _i16.ProductExtra():
+      case _i15.ProductExtra():
         return 'ProductExtra';
-      case _i17.Reservation():
+      case _i16.Reservation():
         return 'Reservation';
-      case _i18.RestaurantTable():
+      case _i17.RestaurantTable():
         return 'RestaurantTable';
-      case _i19.Settings():
+      case _i18.Settings():
         return 'Settings';
-      case _i20.Subcategory():
+      case _i19.Subcategory():
         return 'Subcategory';
     }
     className = _i2.Protocol().getClassNameForObject(data);
@@ -1495,38 +1484,35 @@ class Protocol extends _i1.SerializationManagerServer {
     if (dataClassName == 'CheckoutItem') {
       return deserialize<_i9.CheckoutItem>(data['data']);
     }
-    if (dataClassName == 'Greeting') {
-      return deserialize<_i10.Greeting>(data['data']);
-    }
     if (dataClassName == 'PosOrder') {
-      return deserialize<_i11.PosOrder>(data['data']);
+      return deserialize<_i10.PosOrder>(data['data']);
     }
     if (dataClassName == 'OrderItem') {
-      return deserialize<_i12.OrderItem>(data['data']);
+      return deserialize<_i11.OrderItem>(data['data']);
     }
     if (dataClassName == 'PosEvent') {
-      return deserialize<_i13.PosEvent>(data['data']);
+      return deserialize<_i12.PosEvent>(data['data']);
     }
     if (dataClassName == 'PosUser') {
-      return deserialize<_i14.PosUser>(data['data']);
+      return deserialize<_i13.PosUser>(data['data']);
     }
     if (dataClassName == 'Product') {
-      return deserialize<_i15.Product>(data['data']);
+      return deserialize<_i14.Product>(data['data']);
     }
     if (dataClassName == 'ProductExtra') {
-      return deserialize<_i16.ProductExtra>(data['data']);
+      return deserialize<_i15.ProductExtra>(data['data']);
     }
     if (dataClassName == 'Reservation') {
-      return deserialize<_i17.Reservation>(data['data']);
+      return deserialize<_i16.Reservation>(data['data']);
     }
     if (dataClassName == 'RestaurantTable') {
-      return deserialize<_i18.RestaurantTable>(data['data']);
+      return deserialize<_i17.RestaurantTable>(data['data']);
     }
     if (dataClassName == 'Settings') {
-      return deserialize<_i19.Settings>(data['data']);
+      return deserialize<_i18.Settings>(data['data']);
     }
     if (dataClassName == 'Subcategory') {
-      return deserialize<_i20.Subcategory>(data['data']);
+      return deserialize<_i19.Subcategory>(data['data']);
     }
     if (dataClassName.startsWith('serverpod.')) {
       data['className'] = dataClassName.substring(10);
@@ -1570,24 +1556,24 @@ class Protocol extends _i1.SerializationManagerServer {
         return _i6.BillItem.t;
       case _i8.Category:
         return _i8.Category.t;
-      case _i11.PosOrder:
-        return _i11.PosOrder.t;
-      case _i12.OrderItem:
-        return _i12.OrderItem.t;
-      case _i14.PosUser:
-        return _i14.PosUser.t;
-      case _i15.Product:
-        return _i15.Product.t;
-      case _i16.ProductExtra:
-        return _i16.ProductExtra.t;
-      case _i17.Reservation:
-        return _i17.Reservation.t;
-      case _i18.RestaurantTable:
-        return _i18.RestaurantTable.t;
-      case _i19.Settings:
-        return _i19.Settings.t;
-      case _i20.Subcategory:
-        return _i20.Subcategory.t;
+      case _i10.PosOrder:
+        return _i10.PosOrder.t;
+      case _i11.OrderItem:
+        return _i11.OrderItem.t;
+      case _i13.PosUser:
+        return _i13.PosUser.t;
+      case _i14.Product:
+        return _i14.Product.t;
+      case _i15.ProductExtra:
+        return _i15.ProductExtra.t;
+      case _i16.Reservation:
+        return _i16.Reservation.t;
+      case _i17.RestaurantTable:
+        return _i17.RestaurantTable.t;
+      case _i18.Settings:
+        return _i18.Settings.t;
+      case _i19.Subcategory:
+        return _i19.Subcategory.t;
     }
     return null;
   }

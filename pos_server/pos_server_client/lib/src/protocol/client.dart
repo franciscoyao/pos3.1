@@ -30,8 +30,7 @@ import 'package:pos_server_client/src/protocol/settings.dart' as _i15;
 import 'package:pos_server_client/src/protocol/subcategory.dart' as _i16;
 import 'package:pos_server_client/src/protocol/restaurant_table.dart' as _i17;
 import 'package:pos_server_client/src/protocol/pos_user.dart' as _i18;
-import 'package:pos_server_client/src/protocol/greetings/greeting.dart' as _i19;
-import 'protocol.dart' as _i20;
+import 'protocol.dart' as _i19;
 
 /// By extending [EmailIdpBaseEndpoint], the email identity provider endpoints
 /// are made available on the server and enable the corresponding sign-in widget
@@ -855,24 +854,6 @@ class EndpointUsers extends _i2.EndpointRef {
   );
 }
 
-/// This is an example endpoint that returns a greeting message through
-/// its [hello] method.
-/// {@category Endpoint}
-class EndpointGreeting extends _i2.EndpointRef {
-  EndpointGreeting(_i2.EndpointCaller caller) : super(caller);
-
-  @override
-  String get name => 'greeting';
-
-  /// Returns a personalized greeting message: "Hello {name}".
-  _i3.Future<_i19.Greeting> hello(String name) =>
-      caller.callServerEndpoint<_i19.Greeting>(
-        'greeting',
-        'hello',
-        {'name': name},
-      );
-}
-
 class Modules {
   Modules(Client client) {
     serverpod_auth_idp = _i1.Caller(client);
@@ -904,7 +885,7 @@ class Client extends _i2.ServerpodClientShared {
     bool? disconnectStreamsOnLostInternetConnection,
   }) : super(
          host,
-         _i20.Protocol(),
+         _i19.Protocol(),
          securityContext: securityContext,
          streamingConnectionTimeout: streamingConnectionTimeout,
          connectionTimeout: connectionTimeout,
@@ -926,7 +907,6 @@ class Client extends _i2.ServerpodClientShared {
     subcategories = EndpointSubcategories(this);
     tables = EndpointTables(this);
     users = EndpointUsers(this);
-    greeting = EndpointGreeting(this);
     modules = Modules(this);
   }
 
@@ -956,8 +936,6 @@ class Client extends _i2.ServerpodClientShared {
 
   late final EndpointUsers users;
 
-  late final EndpointGreeting greeting;
-
   late final Modules modules;
 
   @override
@@ -975,7 +953,6 @@ class Client extends _i2.ServerpodClientShared {
     'subcategories': subcategories,
     'tables': tables,
     'users': users,
-    'greeting': greeting,
   };
 
   @override
