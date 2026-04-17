@@ -29,7 +29,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd pos_app
+          cd pos_server/pos_server_client
+          dart pub get
+          cd ../../pos_app
           flutter pub get
 
       - name: Build APK
@@ -57,7 +59,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd pos_app
+          cd pos_server/pos_server_client
+          dart pub get
+          cd ../../pos_app
           flutter pub get
 
       - name: Build Windows
@@ -67,7 +71,7 @@ jobs:
 
       - name: Zip Windows build
         run: |
-          Compress-Archive -Path "pos_app\build\windows\x64\runner\Release\*" -DestinationPath "pos_app-windows.zip"
+          Compress-Archive -Path "pos_app/build/windows/x64/runner/Release/*" -DestinationPath "pos_app-windows.zip"
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
@@ -84,16 +88,18 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: apk-release
+          path: artifacts
 
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
           name: windows-release
+          path: artifacts
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: |
-            app-release.apk
-            pos_app-windows.zip
+            artifacts/app-release.apk
+            artifacts/pos_app-windows.zip
