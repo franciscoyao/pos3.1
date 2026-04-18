@@ -8,8 +8,14 @@ import '../shared/responsive_layout.dart';
 class NewOrderView extends StatefulWidget {
   final String? initialTableNo;
   final String? initialOrderType;
+  final VoidCallback? onOrderCreated;
 
-  const NewOrderView({super.key, this.initialTableNo, this.initialOrderType});
+  const NewOrderView({
+    super.key,
+    this.initialTableNo,
+    this.initialOrderType,
+    this.onOrderCreated,
+  });
 
   @override
   State<NewOrderView> createState() => _NewOrderViewState();
@@ -166,6 +172,7 @@ class _NewOrderViewState extends State<NewOrderView> {
             backgroundColor: Colors.green,
           ),
         );
+        widget.onOrderCreated?.call();
       }
     } catch (e) {
       if (mounted) {
@@ -213,7 +220,9 @@ class _NewOrderViewState extends State<NewOrderView> {
                     isScrollControlled: true,
                     backgroundColor: Colors.white,
                     shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(20),
+                      ),
                     ),
                     builder: (context) => SizedBox(
                       height: MediaQuery.of(context).size.height * 0.85,
@@ -222,10 +231,16 @@ class _NewOrderViewState extends State<NewOrderView> {
                   );
                 },
                 backgroundColor: const Color(0xFF0F172A),
-                icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+                icon: const Icon(
+                  Icons.shopping_cart_outlined,
+                  color: Colors.white,
+                ),
                 label: Text(
                   '${cart.length} items - €${subtotal.toStringAsFixed(2)}',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               )
             : null,
@@ -235,10 +250,7 @@ class _NewOrderViewState extends State<NewOrderView> {
     return Row(
       children: [
         // Main Menu Area
-        Expanded(
-          flex: 7,
-          child: mainContent,
-        ),
+        Expanded(flex: 7, child: mainContent),
 
         // Cart Area (Right Sidebar)
         Container(
@@ -262,11 +274,7 @@ class _NewOrderViewState extends State<NewOrderView> {
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.grid_view_rounded,
-            size: 20,
-            color: Colors.grey,
-          ),
+          const Icon(Icons.grid_view_rounded, size: 20, color: Colors.grey),
           const SizedBox(width: 12),
           Expanded(
             child: TextField(
@@ -322,14 +330,15 @@ class _NewOrderViewState extends State<NewOrderView> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
-            children: [_buildTypeBtn('Dine-In', false), _buildTypeBtn('Takeaway', false)],
+            children: [
+              _buildTypeBtn('Dine-In', false),
+              _buildTypeBtn('Takeaway', false),
+            ],
           ),
         ),
         if (orderType == 'Dine-In') ...[
           const SizedBox(width: 16),
-                  Expanded(
-                    child: tableSettings,
-                  ),
+          Expanded(child: tableSettings),
         ],
         const SizedBox(width: 16),
         _buildScheduleButton(),
@@ -416,7 +425,10 @@ class _NewOrderViewState extends State<NewOrderView> {
       },
       child: Container(
         alignment: isMobile ? Alignment.center : null,
-        padding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 32, vertical: 12),
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 8 : 32,
+          vertical: 12,
+        ),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF0F172A) : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
@@ -492,51 +504,51 @@ class _NewOrderViewState extends State<NewOrderView> {
     return ListView(
       children: [
         if (_searchController.text.isEmpty && selectedCategoryId == null) ...[
-              const Row(
-                children: [
-                  Icon(Icons.trending_up_rounded, size: 20, color: Colors.grey),
-                  SizedBox(width: 8),
-                  Text(
-                    'Most Selling',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ],
+          const Row(
+            children: [
+              Icon(Icons.trending_up_rounded, size: 20, color: Colors.grey),
+              SizedBox(width: 8),
+              Text(
+                'Most Selling',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 180,
-                child: popularProducts.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No popular items for $orderType',
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                      )
-                    : ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: popularProducts.length,
-                        separatorBuilder: (_, _) => const SizedBox(width: 16),
-                        itemBuilder: (context, index) =>
-                            _buildPopularCard(popularProducts[index]),
-                      ),
-              ),
-              const SizedBox(height: 32),
             ],
-
-            // Category Chips
-            SizedBox(
-              height: 40,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  _buildCategoryChip(null, 'All'),
-                  ...filteredCategories.map(
-                    (c) => _buildCategoryChip(c.id, c.name),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 180,
+            child: popularProducts.isEmpty
+                ? Center(
+                    child: Text(
+                      'No popular items for $orderType',
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                  )
+                : ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: popularProducts.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 16),
+                    itemBuilder: (context, index) =>
+                        _buildPopularCard(popularProducts[index]),
                   ),
-                ],
+          ),
+          const SizedBox(height: 32),
+        ],
+
+        // Category Chips
+        SizedBox(
+          height: 40,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              _buildCategoryChip(null, 'All'),
+              ...filteredCategories.map(
+                (c) => _buildCategoryChip(c.id, c.name),
               ),
-            ),
-            const SizedBox(height: 24),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
 
         // Grid of Products
         GridView.builder(

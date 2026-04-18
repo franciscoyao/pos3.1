@@ -62,10 +62,15 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
       if (mounted) {
         // Auto-print newly incoming pending orders
         if (allOrders.isNotEmpty) {
-          final existingPendingIds =
-              allOrders.where((o) => o.status == 'Pending').map((o) => o.id).toSet();
+          final existingPendingIds = allOrders
+              .where((o) => o.status == 'Pending')
+              .map((o) => o.id)
+              .toSet();
           final newPendingOrders = fetched
-              .where((o) => o.status == 'Pending' && !existingPendingIds.contains(o.id))
+              .where(
+                (o) =>
+                    o.status == 'Pending' && !existingPendingIds.contains(o.id),
+              )
               .toList();
 
           for (final order in newPendingOrders) {
@@ -106,17 +111,20 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
   }
 
   Widget _buildTopBar() {
+    final isMobile = ResponsiveLayout.isMobile(context);
     return Container(
       height: 64,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 24),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
       ),
       child: Row(
         children: [
-          const Icon(Icons.restaurant, size: 24, color: Color(0xFF0F172A)),
-          const SizedBox(width: 12),
+          if (!isMobile) ...[
+            const Icon(Icons.restaurant, size: 24, color: Color(0xFF0F172A)),
+            const SizedBox(width: 12),
+          ],
           const Text(
             'POS',
             style: TextStyle(
@@ -127,45 +135,41 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
           ),
           const SizedBox(width: 8),
           Text(
-            '${widget.station} Display',
+            isMobile ? widget.station : '${widget.station} Display',
             style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
           const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.wifi, size: 16, color: Colors.green),
-                const SizedBox(width: 8),
-                Text(
-                  'Online',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[700],
+          if (!isMobile) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.wifi, size: 16, color: Colors.green),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Online',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[700],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 16),
-          TextButton.icon(
+            const SizedBox(width: 16),
+          ],
+          IconButton(
             onPressed: () => Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (_) => const LoginScreen()),
             ),
-            icon: const Icon(Icons.logout, size: 18, color: Color(0xFF0F172A)),
-            label: const Text(
-              'Logout',
-              style: TextStyle(
-                color: Color(0xFF0F172A),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            icon: const Icon(Icons.logout, size: 20, color: Color(0xFF0F172A)),
+            tooltip: 'Logout',
           ),
         ],
       ),
@@ -173,37 +177,45 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
   }
 
   Widget _buildSubHeader() {
+    final isMobile = ResponsiveLayout.isMobile(context);
     final activeCount = allOrders.length;
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isMobile ? 16 : 24),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(12),
+          if (!isMobile) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                widget.station == 'Kitchen'
+                    ? Icons.restaurant
+                    : Icons.local_bar,
+                color: const Color(0xFF0F172A),
+              ),
             ),
-            child: Icon(
-              widget.station == 'Kitchen' ? Icons.restaurant : Icons.local_bar,
-              color: const Color(0xFF0F172A),
-            ),
-          ),
-          const SizedBox(width: 16),
+            const SizedBox(width: 16),
+          ],
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${widget.station} Orders',
-                style: const TextStyle(
-                  fontSize: 24,
+                isMobile ? widget.station : '${widget.station} Orders',
+                style: TextStyle(
+                  fontSize: isMobile ? 20 : 24,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF0F172A),
+                  color: const Color(0xFF0F172A),
                 ),
               ),
               Text(
                 '$activeCount active orders',
-                style: TextStyle(color: Colors.grey[500]),
+                style: TextStyle(
+                  color: Colors.grey[500],
+                  fontSize: isMobile ? 12 : 14,
+                ),
               ),
             ],
           ),
@@ -248,7 +260,9 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
                 context: context,
                 builder: (ctx) => Dialog(
                   child: SizedBox(
-                    width: ResponsiveLayout.isMobile(ctx) ? MediaQuery.of(ctx).size.width * 0.9 : 1000,
+                    width: ResponsiveLayout.isMobile(ctx)
+                        ? MediaQuery.of(ctx).size.width * 0.9
+                        : 1000,
                     height: 800,
                     child: OrderHistoryView(stationFilter: widget.station),
                   ),
@@ -265,7 +279,9 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
                 context: context,
                 builder: (ctx) => Dialog(
                   child: SizedBox(
-                    width: ResponsiveLayout.isMobile(ctx) ? MediaQuery.of(ctx).size.width * 0.9 : 800,
+                    width: ResponsiveLayout.isMobile(ctx)
+                        ? MediaQuery.of(ctx).size.width * 0.9
+                        : 800,
                     height: 600,
                     child: const PrinterManagementView(),
                   ),
@@ -282,7 +298,9 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
                 context: context,
                 builder: (ctx) => Dialog(
                   child: SizedBox(
-                    width: ResponsiveLayout.isMobile(ctx) ? MediaQuery.of(ctx).size.width * 0.9 : 800,
+                    width: ResponsiveLayout.isMobile(ctx)
+                        ? MediaQuery.of(ctx).size.width * 0.9
+                        : 800,
                     height: 600,
                     child: const SettingsView(),
                   ),
@@ -329,31 +347,28 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
     final child = Column(
       children: [
         Padding(
-          padding: const EdgeInsets.only(bottom: 16),
+          padding: EdgeInsets.only(bottom: isMobile ? 12 : 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 16,
+                style: TextStyle(
+                  fontSize: isMobile ? 14 : 16,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF0F172A),
+                  color: const Color(0xFF0F172A),
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 2,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: const Color(0xFFE2E8F0),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   '${orders.length}',
-                  style: const TextStyle(
-                    fontSize: 12,
+                  style: TextStyle(
+                    fontSize: isMobile ? 11 : 12,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -362,17 +377,25 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            itemCount: orders.length,
-            itemBuilder: (context, index) => _buildOrderCard(orders[index]),
-          ),
+          child: orders.isEmpty
+              ? Center(
+                  child: Text(
+                    'No $title',
+                    style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: orders.length,
+                  itemBuilder: (context, index) =>
+                      _buildOrderCard(orders[index]),
+                ),
         ),
       ],
     );
 
     if (isMobile) {
       return Container(
-        width: 300,
+        width: MediaQuery.of(context).size.width * 0.85,
         margin: const EdgeInsets.only(right: 16),
         child: child,
       );
@@ -381,15 +404,16 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
   }
 
   Widget _buildOrderCard(PosOrder order) {
+    final isMobile = ResponsiveLayout.isMobile(context);
     final createdAt = order.createdAt ?? DateTime.now();
     final timeAgo = DateTime.now().difference(createdAt).inMinutes;
     final isUrgent = timeAgo > 15;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: isMobile ? 12 : 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(isMobile ? 12 : 16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -402,50 +426,65 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(isMobile ? 12 : 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      order.tableNo != null
-                          ? 'Table ${order.tableNo}'
-                          : 'Takeaway',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      '#${order.orderCode?.substring(order.orderCode!.length - 4) ?? "N/A"}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                    ),
-                    if (order.status == 'Scheduled' &&
-                        order.scheduledTime != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.schedule_rounded,
-                              size: 14,
-                              color: Colors.blue,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Scheduled: ${DateFormat('HH:mm').format(order.scheduledTime!.toLocal())}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Colors.blue,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        order.tableNo != null
+                            ? 'Table ${order.tableNo}'
+                            : 'Takeaway',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: isMobile ? 14 : 16,
                         ),
                       ),
-                  ],
+                      Text(
+                        '#${order.orderCode?.substring(order.orderCode!.length - 4) ?? "N/A"}',
+                        style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                      ),
+                      if (order.status == 'Scheduled' &&
+                          order.scheduledTime != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.schedule_rounded,
+                                size: 12,
+                                color: Colors.blue,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                DateFormat(
+                                  'HH:mm',
+                                ).format(order.scheduledTime!.toLocal()),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.blue,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
                 if (isUrgent)
-                  const Icon(Icons.priority_high, color: Colors.red, size: 20),
+                  const Icon(Icons.priority_high, color: Colors.red, size: 18),
+                Text(
+                  '${timeAgo}m',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isUrgent ? Colors.red : Colors.grey[400],
+                    fontWeight: isUrgent ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
               ],
             ),
           ),
@@ -453,23 +492,28 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(isMobile ? 12 : 16),
             itemCount: (order.items ?? []).length,
             itemBuilder: (context, idx) {
               final item = order.items![idx];
               return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.only(bottom: 6),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       '${item.quantity}x',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: isMobile ? 13 : 14,
+                        color: const Color(0xFF0F172A),
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         item.productName ?? "N/A",
-                        style: const TextStyle(fontSize: 13),
+                        style: TextStyle(fontSize: isMobile ? 13 : 14),
                       ),
                     ),
                   ],
@@ -478,21 +522,37 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
             },
           ),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.fromLTRB(
+              isMobile ? 12 : 16,
+              0,
+              isMobile ? 12 : 16,
+              isMobile ? 12 : 16,
+            ),
             child: Row(
               children: [
-                IconButton(
-                  icon: const Icon(Icons.print_outlined),
-                  onPressed: () {
-                    PrinterService().printKOT(
-                      order,
-                      station: widget.station,
-                      items: order.items ?? [],
-                    );
-                  },
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: IconButton(
+                    icon: Icon(Icons.print_outlined, size: isMobile ? 20 : 24),
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(
+                      minWidth: isMobile ? 36 : 48,
+                      minHeight: isMobile ? 36 : 48,
+                    ),
+                    onPressed: () {
+                      PrinterService().printKOT(
+                        order,
+                        station: widget.station,
+                        items: order.items ?? [],
+                      );
+                    },
+                  ),
                 ),
                 const SizedBox(width: 8),
-                Expanded(child: _buildActionButton(order)),
+                Expanded(child: _buildActionButton(order, isMobile)),
               ],
             ),
           ),
@@ -501,7 +561,7 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
     );
   }
 
-  Widget _buildActionButton(PosOrder order) {
+  Widget _buildActionButton(PosOrder order, bool isMobile) {
     String nextStatus = '';
     String label = '';
     Color color = Colors.blue;
@@ -509,7 +569,7 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
     switch (order.status) {
       case 'Scheduled':
         nextStatus = 'Pending';
-        label = 'Accept Now';
+        label = 'Accept';
         color = Colors.blue;
         break;
       case 'Pending':
@@ -518,8 +578,8 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
         color = const Color(0xFF0F172A);
         break;
       case 'In Progress':
-        nextStatus = 'Ready';
-        label = 'Mark Ready';
+        nextStatus = 'Mark Ready';
+        label = 'Ready';
         color = Colors.orange;
         break;
       case 'Ready':
@@ -535,15 +595,16 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
       onPressed: () => _updateStatus(order, nextStatus),
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
-        minimumSize: const Size(double.infinity, 40),
+        minimumSize: Size(double.infinity, isMobile ? 40 : 48),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         elevation: 0,
       ),
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.bold,
+          fontSize: isMobile ? 14 : 16,
         ),
       ),
     );

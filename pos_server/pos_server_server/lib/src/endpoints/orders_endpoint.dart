@@ -104,75 +104,11 @@ class OrdersEndpoint extends Endpoint {
           orderCode ??
           'ORD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
 
-      // Check if table is occupied. If so, find the active order and append to it.
-      // Do NOT append if this is a scheduled order for the future.
-      if (orderType == 'Dine-In' && tableNo != null && scheduledTime == null) {
-        final existingTables = await RestaurantTable.db.find(
-          session,
-          where: (t) => t.tableNumber.equals(tableNo),
-          limit: 1,
-          transaction: txSession,
-        );
-
-        if (existingTables.isNotEmpty &&
-            existingTables.first.status == 'Occupied') {
-          final activeOrderCode = existingTables.first.orderCode;
-          if (activeOrderCode != null) {
-            final activeOrders = await PosOrder.db.find(
-              session,
-              where: (t) =>
-                  t.orderCode.equals(activeOrderCode) &
-                  t.status.notEquals('Completed') &
-                  t.status.notEquals('Cancelled'),
-              limit: 1,
-              transaction: txSession,
-            );
-
-            if (activeOrders.isNotEmpty) {
-              final existingOrder = activeOrders.first;
-
-              // Add new items to existing order
-              for (final item in items) {
-                final toInsert = OrderItem(
-                  orderId: existingOrder.id!,
-                  productId: item.productId,
-                  productName: item.productName,
-                  productStation: item.productStation,
-                  quantity: item.quantity,
-                  price: item.price,
-                  totalPrice: item.totalPrice,
-                  notes: item.notes,
-                  extras: item.extras,
-                );
-                await OrderItem.db.insertRow(
-                  session,
-                  toInsert,
-                  transaction: txSession,
-                );
-              }
-
-              // Update existing order total
-              await PosOrder.db.updateRow(
-                session,
-                existingOrder.copyWith(
-                  total: existingOrder.total + total,
-                  subtotal: (existingOrder.subtotal) + total,
-                  updatedAt: DateTime.now(),
-                ),
-                transaction: txSession,
-              );
-
-              await EventService.broadcast(session, 'order_updated');
-              return existingOrder;
-            }
-          }
-        }
-      }
-
       final now = DateTime.now();
       final status = scheduledTime != null ? 'Scheduled' : 'Pending';
       final order = PosOrder(
         total: total,
+        subtotal: total,
         orderType: orderType,
         tableNo: tableNo,
         orderCode: finalOrderCode,
@@ -240,6 +176,8 @@ class OrdersEndpoint extends Endpoint {
 
       await EventService.broadcast(session, 'order_created');
       await EventService.broadcast(session, 'table_updated');
+      // Added back checkout_completed for NEW orders ONLY
+      await EventService.broadcast(session, 'checkout_completed');
 
       return savedOrder;
     });
@@ -279,6 +217,8 @@ class OrdersEndpoint extends Endpoint {
       existing.copyWith(status: status, updatedAt: DateTime.now()),
     );
     await EventService.broadcast(session, 'order_updated');
+    // Keep checkout_completed only for status changes (e.g., Pending -> Ready)
+    await EventService.broadcast(session, 'checkout_completed');
     return updated;
   }
 
@@ -291,6 +231,7 @@ class OrdersEndpoint extends Endpoint {
       order.copyWith(updatedAt: DateTime.now()),
     );
     await EventService.broadcast(session, 'order_updated');
+    // Removed checkout_completed broadcast to avoid interfering with Kitchen/Bar orders
     return updated;
   }
 
@@ -345,6 +286,7 @@ class OrdersEndpoint extends Endpoint {
       await PosOrder.db.deleteRow(session, source, transaction: txSession);
 
       await EventService.broadcast(session, 'order_updated');
+      // Removed checkout_completed broadcast to avoid interfering with Kitchen/Bar orders
       return true;
     });
   }
@@ -490,6 +432,7 @@ class OrdersEndpoint extends Endpoint {
 
       await EventService.broadcast(session, 'order_updated');
       await EventService.broadcast(session, 'table_updated');
+      // Removed checkout_completed broadcast to avoid interfering with Kitchen/Bar orders
       return newOrder.id!;
     });
   }

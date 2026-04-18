@@ -160,20 +160,53 @@ class CheckoutEndpoint extends Endpoint {
         transaction: txSession,
       );
 
-      // Delete the table only if fully paid
+      // Only update table if this order is fully paid
       if (isFullyPaid && order.tableNo != null) {
-        final tables = await RestaurantTable.db.find(
+        // Check if there are ANY other active orders for this table
+        final otherActiveOrders = await PosOrder.db.find(
           session,
-          where: (t) => t.tableNumber.equals(order.tableNo!),
-          limit: 1,
+          where: (t) =>
+              t.tableNo.equals(order.tableNo!) &
+              t.id.notEquals(order.id!) &
+              t.status.notEquals('Completed') &
+              t.status.notEquals('Cancelled'),
           transaction: txSession,
         );
-        if (tables.isNotEmpty) {
-          await RestaurantTable.db.deleteRow(
+
+        if (otherActiveOrders.isEmpty) {
+          // No other active orders, we can safely delete the table record (make it vacant)
+          final tables = await RestaurantTable.db.find(
             session,
-            tables.first,
+            where: (t) => t.tableNumber.equals(order.tableNo!),
+            limit: 1,
             transaction: txSession,
           );
+          if (tables.isNotEmpty) {
+            await RestaurantTable.db.deleteRow(
+              session,
+              tables.first,
+              transaction: txSession,
+            );
+          }
+        } else {
+          // There are other active orders, keep the table occupied.
+          // Optionally update the table's orderCode to one of the other active orders.
+          final tables = await RestaurantTable.db.find(
+            session,
+            where: (t) => t.tableNumber.equals(order.tableNo!),
+            limit: 1,
+            transaction: txSession,
+          );
+          if (tables.isNotEmpty) {
+            await RestaurantTable.db.updateRow(
+              session,
+              tables.first.copyWith(
+                orderCode: otherActiveOrders.first.orderCode,
+                updatedAt: DateTime.now(),
+              ),
+              transaction: txSession,
+            );
+          }
         }
       }
 

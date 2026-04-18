@@ -6,8 +6,8 @@ import '../shared/printer_service.dart';
 import '../shared/responsive_layout.dart';
 
 class CheckoutView extends StatefulWidget {
-  final String? initialTableNo;
-  const CheckoutView({super.key, this.initialTableNo});
+  final String? tableNo;
+  const CheckoutView({super.key, this.tableNo});
 
   @override
   State<CheckoutView> createState() => _CheckoutViewState();
@@ -60,7 +60,7 @@ class _CheckoutViewState extends State<CheckoutView> {
   @override
   void initState() {
     super.initState();
-    filterTableNo = widget.initialTableNo;
+    filterTableNo = widget.tableNo;
     _loadActiveOrders();
     _subscribeToEvents();
   }
@@ -183,7 +183,7 @@ class _CheckoutViewState extends State<CheckoutView> {
   Widget _buildDetailedCheckout() {
     final order = selectedOrder!;
     final isMobile = ResponsiveLayout.isMobile(context);
-    
+
     final summaryCard = Container(
       width: isMobile ? double.infinity : 400,
       padding: const EdgeInsets.all(24),
@@ -207,29 +207,8 @@ class _CheckoutViewState extends State<CheckoutView> {
           const SizedBox(height: 24),
           SizedBox(
             height: isMobile ? 200 : null,
-            child: isMobile 
-              ? ListView.separated(
-                  itemCount: (order.items ?? []).length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final item = order.items![index];
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '${item.quantity}x ${item.productName}',
-                          style: TextStyle(color: Colors.grey[700]),
-                        ),
-                        Text(
-                          '€${item.totalPrice.toStringAsFixed(2)}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    );
-                  },
-                )
-              : Expanded(
-                  child: ListView.separated(
+            child: isMobile
+                ? ListView.separated(
                     itemCount: (order.items ?? []).length,
                     separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
@@ -248,8 +227,31 @@ class _CheckoutViewState extends State<CheckoutView> {
                         ],
                       );
                     },
+                  )
+                : Expanded(
+                    child: ListView.separated(
+                      itemCount: (order.items ?? []).length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final item = order.items![index];
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '${item.quantity}x ${item.productName}',
+                              style: TextStyle(color: Colors.grey[700]),
+                            ),
+                            Text(
+                              '€${item.totalPrice.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ),
-                ),
           ),
           const Divider(height: 32),
           const SizedBox(height: 8),
@@ -284,9 +286,7 @@ class _CheckoutViewState extends State<CheckoutView> {
           ),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: amountToPay > 0
-                ? () => _finalizePayment(order)
-                : null,
+            onPressed: amountToPay > 0 ? () => _finalizePayment(order) : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0F172A),
               minimumSize: const Size(double.infinity, 56),
