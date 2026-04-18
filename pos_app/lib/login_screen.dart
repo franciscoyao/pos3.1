@@ -168,7 +168,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _loadIp() async {
     final prefs = await SharedPreferences.getInstance();
-    _ipController.text = prefs.getString('server_ip') ?? '192.168.1.203';
+    _ipController.text = prefs.getString('server_ip') ?? '192.168.1.201';
   }
 
   void _onRoleSelected(String role) {
