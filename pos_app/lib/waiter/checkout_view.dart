@@ -205,53 +205,29 @@ class _CheckoutViewState extends State<CheckoutView> {
             style: TextStyle(color: Colors.grey[500]),
           ),
           const SizedBox(height: 24),
-          SizedBox(
-            height: isMobile ? 200 : null,
-            child: isMobile
-                ? ListView.separated(
-                    itemCount: (order.items ?? []).length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final item = order.items![index];
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '${item.quantity}x ${item.productName}',
-                            style: TextStyle(color: Colors.grey[700]),
-                          ),
-                          Text(
-                            '€${item.totalPrice.toStringAsFixed(2)}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      );
-                    },
-                  )
-                : Expanded(
-                    child: ListView.separated(
-                      itemCount: (order.items ?? []).length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final item = order.items![index];
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '${item.quantity}x ${item.productName}',
-                              style: TextStyle(color: Colors.grey[700]),
-                            ),
-                            Text(
-                              '€${item.totalPrice.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
+          Container(
+            constraints: BoxConstraints(maxHeight: isMobile ? 200 : 400),
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: (order.items ?? []).length,
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final item = order.items![index];
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${item.quantity}x ${item.productName}',
+                      style: TextStyle(color: Colors.grey[700]),
                     ),
-                  ),
+                    Text(
+                      '€${item.totalPrice.toStringAsFixed(2)}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
           const Divider(height: 32),
           const SizedBox(height: 8),
@@ -835,11 +811,12 @@ class _CheckoutViewState extends State<CheckoutView> {
 
   Widget _buildSplitTab(String mode) {
     final isSelected = splitMode == mode;
-    return Expanded(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2.0),
       child: InkWell(
         onTap: () => setState(() => splitMode = mode),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           decoration: BoxDecoration(
             color: isSelected ? Colors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
@@ -874,12 +851,9 @@ class _CheckoutViewState extends State<CheckoutView> {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.grey[100]!),
       ),
-      child: RadioGroup<String>(
-        groupValue: paymentMethod,
-        onChanged: (val) => setState(() => paymentMethod = val!),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
             const Text(
               'Payment Method',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -922,7 +896,6 @@ class _CheckoutViewState extends State<CheckoutView> {
             ),
           ],
         ),
-      ),
     );
   }
 
@@ -941,7 +914,14 @@ class _CheckoutViewState extends State<CheckoutView> {
         ),
         child: Row(
           children: [
-            Radio<String>(value: method, activeColor: const Color(0xFF0F172A)),
+            Radio<String>(
+              value: method,
+              // ignore: deprecated_member_use
+              groupValue: paymentMethod,
+              // ignore: deprecated_member_use
+              onChanged: (val) => setState(() => paymentMethod = val!),
+              activeColor: const Color(0xFF0F172A),
+            ),
             Icon(icon, color: Colors.grey[700]),
             const SizedBox(width: 12),
             Text(method, style: const TextStyle(fontWeight: FontWeight.bold)),
