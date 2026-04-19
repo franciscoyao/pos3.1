@@ -152,6 +152,7 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
       'Pending',
       'In Progress',
       'Ready',
+      'Served',
       'Completed',
       'Cancelled',
       'Kiosk',
@@ -373,6 +374,8 @@ class _OrderHistoryViewState extends State<OrderHistoryView> {
         return Colors.blue;
       case 'ready':
         return const Color(0xFF10B981);
+      case 'served':
+        return const Color(0xFF6366F1);
       case 'completed':
         return Colors.grey;
       case 'cancelled':

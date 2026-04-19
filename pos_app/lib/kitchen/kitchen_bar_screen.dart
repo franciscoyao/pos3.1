@@ -583,8 +583,8 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
         color = Colors.orange;
         break;
       case 'Ready':
-        nextStatus = 'Completed';
-        label = 'Complete';
+        nextStatus = 'Served';
+        label = 'Served';
         color = const Color(0xFF10B981);
         break;
     }

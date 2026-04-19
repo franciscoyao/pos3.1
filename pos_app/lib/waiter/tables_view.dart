@@ -56,7 +56,7 @@ class _TablesViewState extends State<TablesView> {
       final fetchedTables = await client.tables.getAll();
       final fetchedOrders = await client.orders.getAll(
         includeItems: true,
-        statusFilter: 'Pending,In Progress,Scheduled',
+        statusFilter: 'Pending,In Progress,Ready,Scheduled,Served',
       );
 
       final Map<String, List<PosOrder>> ordersMap = {};

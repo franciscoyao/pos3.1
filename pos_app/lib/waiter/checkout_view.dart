@@ -86,7 +86,7 @@ class _CheckoutViewState extends State<CheckoutView> {
     try {
       final fetched = await client.orders.getAll(
         includeItems: true,
-        statusFilter: 'Pending,In Progress',
+        statusFilter: 'Pending,In Progress,Ready,Scheduled,Served',
       );
       if (mounted) {
         setState(() {
@@ -116,7 +116,7 @@ class _CheckoutViewState extends State<CheckoutView> {
     try {
       final fetched = await client.orders.getAll(
         includeItems: true,
-        statusFilter: 'Pending,In Progress',
+        statusFilter: 'Pending,In Progress,Ready,Scheduled,Served',
       );
       if (mounted) {
         setState(() {
