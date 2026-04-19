@@ -176,8 +176,6 @@ class OrdersEndpoint extends Endpoint {
 
       await EventService.broadcast(session, 'order_created');
       await EventService.broadcast(session, 'table_updated');
-      // Added back checkout_completed for NEW orders ONLY
-      await EventService.broadcast(session, 'checkout_completed');
 
       return savedOrder;
     });
@@ -212,13 +210,14 @@ class OrdersEndpoint extends Endpoint {
       }
     }
 
+    // Normalize 'Mark Ready' -> 'Ready'
+    final normalizedStatus = status == 'Mark Ready' ? 'Ready' : status;
+
     final updated = await PosOrder.db.updateRow(
       session,
-      existing.copyWith(status: status, updatedAt: DateTime.now()),
+      existing.copyWith(status: normalizedStatus, updatedAt: DateTime.now()),
     );
     await EventService.broadcast(session, 'order_updated');
-    // Keep checkout_completed only for status changes (e.g., Pending -> Ready)
-    await EventService.broadcast(session, 'checkout_completed');
     return updated;
   }
 

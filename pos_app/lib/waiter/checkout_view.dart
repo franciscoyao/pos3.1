@@ -76,7 +76,7 @@ class _CheckoutViewState extends State<CheckoutView> {
   void _subscribeToEvents() {
     _eventSubscription = posEventStreamController.stream.listen((event) {
       if (event.eventType == 'order_updated' ||
-          event.eventType == 'checkout_completed') {
+          event.eventType == 'order_created') {
         _loadActiveOrdersQuietly();
       }
     });
