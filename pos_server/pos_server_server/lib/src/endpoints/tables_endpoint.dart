@@ -61,7 +61,8 @@ class TablesEndpoint extends Endpoint {
         session,
         where: (t) =>
             t.tableNo.equals(sourceTableNumber) &
-            t.status.inSet({'Pending', 'In Progress'}),
+            t.status.notEquals('Completed') &
+            t.status.notEquals('Cancelled'),
         transaction: transaction,
       );
 
@@ -72,7 +73,8 @@ class TablesEndpoint extends Endpoint {
         session,
         where: (t) =>
             t.tableNo.equals(targetTableNumber) &
-            t.status.inSet({'Pending', 'In Progress'}),
+            t.status.notEquals('Completed') &
+            t.status.notEquals('Cancelled'),
         transaction: transaction,
       );
 

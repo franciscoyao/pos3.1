@@ -53,8 +53,10 @@ class CheckoutEndpoint extends Endpoint {
         transaction: txSession,
       );
 
-      // 3. Save Bill Items and Subtract from order if needed
+      // 3. Save Bill Items for the receipt — DO NOT modify OrderItems.
+      //    Payment is independent from kitchen preparation.
       if (itemsToPay != null && itemsToPay.isNotEmpty) {
+        // Pay-by-item: record only the selected items/quantities in the bill
         for (final itemToPay in itemsToPay) {
           final itemId = itemToPay.id;
           final qtyToPay = itemToPay.quantity;
@@ -67,7 +69,6 @@ class CheckoutEndpoint extends Endpoint {
           );
           if (existing == null) continue;
 
-          // Save to BillItem
           await BillItem.db.insertRow(
             session,
             BillItem(
@@ -79,57 +80,26 @@ class CheckoutEndpoint extends Endpoint {
             ),
             transaction: txSession,
           );
-
-          if (existing.quantity <= qtyToPay) {
-            // Item fully paid, delete it from the order
-            await OrderItem.db.deleteRow(
-              session,
-              existing,
-              transaction: txSession,
-            );
-          } else {
-            // Item partially paid, reduce quantity
-            final remainingQty = existing.quantity - qtyToPay;
-            await OrderItem.db.updateRow(
-              session,
-              existing.copyWith(
-                quantity: remainingQty,
-                totalPrice: remainingQty * existing.price,
-              ),
-              transaction: txSession,
-            );
-          }
         }
       } else {
-        // No itemsToPay provided. If it's a full payment, record all items in the Bill
-        final remainingTotal = order.total - totalToPay;
-        final isFullyPaid = remainingTotal <= 0.01;
-
-        if (isFullyPaid) {
-          final items = await OrderItem.db.find(
+        // Full or partial payment: record all order items in the bill
+        final items = await OrderItem.db.find(
+          session,
+          where: (t) => t.orderId.equals(order.id!),
+          transaction: txSession,
+        );
+        for (final item in items) {
+          await BillItem.db.insertRow(
             session,
-            where: (t) => t.orderId.equals(order.id!),
+            BillItem(
+              billId: bill.id!,
+              productName: item.productName,
+              quantity: item.quantity,
+              price: item.price,
+              totalPrice: item.totalPrice,
+            ),
             transaction: txSession,
           );
-          for (final item in items) {
-            await BillItem.db.insertRow(
-              session,
-              BillItem(
-                billId: bill.id!,
-                productName: item.productName,
-                quantity: item.quantity,
-                price: item.price,
-                totalPrice: item.totalPrice,
-              ),
-              transaction: txSession,
-            );
-            // Delete item from active order
-            await OrderItem.db.deleteRow(
-              session,
-              item,
-              transaction: txSession,
-            );
-          }
         }
       }
 
@@ -144,6 +114,22 @@ class CheckoutEndpoint extends Endpoint {
         isFullyPaid = remainingTotal <= 0.01;
       }
 
+      // Determine the new status:
+      // - If fully paid AND already Ready/Served → Completed
+      // - If fully paid BUT still being prepared (Pending/In Progress/Scheduled) → Paid
+      // - If not fully paid → keep current status
+      String newStatus;
+      if (isFullyPaid) {
+        final readyStatuses = {'Ready', 'Served'};
+        if (readyStatuses.contains(order.status)) {
+          newStatus = 'Completed';
+        } else {
+          newStatus = 'Paid';
+        }
+      } else {
+        newStatus = order.status;
+      }
+
       await PosOrder.db.updateRow(
         session,
         order.copyWith(
@@ -151,7 +137,7 @@ class CheckoutEndpoint extends Endpoint {
           subtotal: (order.subtotal - (subtotal ?? totalToPay)) > 0
               ? (order.subtotal - (subtotal ?? totalToPay))
               : 0,
-          status: isFullyPaid ? 'Completed' : order.status,
+          status: newStatus,
           billId: isFullyPaid ? bill.id : order.billId,
           initialSplitCount: initialSplitCount ?? order.initialSplitCount,
           remainingSplitCount: remainingSplitCount,
@@ -160,8 +146,8 @@ class CheckoutEndpoint extends Endpoint {
         transaction: txSession,
       );
 
-      // Only update table if this order is fully paid
-      if (isFullyPaid && order.tableNo != null) {
+      // Only update table if this order is fully completed (paid + ready/served)
+      if (newStatus == 'Completed' && order.tableNo != null) {
         // Check if there are ANY other active orders for this table
         final otherActiveOrders = await PosOrder.db.find(
           session,

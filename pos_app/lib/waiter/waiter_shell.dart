@@ -21,6 +21,10 @@ class _WaiterShellState extends State<WaiterShell> {
   int _selectedIndex = 0;
   Map<String, dynamic>? _viewParams;
 
+  // Keys to force rebuild only when params change
+  Key _newOrderKey = UniqueKey();
+  Key _checkoutKey = UniqueKey();
+
   final List<Map<String, dynamic>> _navItems = [
     {
       'title': 'New Order',
@@ -54,6 +58,14 @@ class _WaiterShellState extends State<WaiterShell> {
       }
       _viewParams = params;
       _currentViewTitle = view;
+
+      // Force rebuild of views that depend on params
+      if (view == 'New Order' && params != null) {
+        _newOrderKey = UniqueKey();
+      }
+      if (view == 'Checkout') {
+        _checkoutKey = UniqueKey();
+      }
     });
   }
 
@@ -157,29 +169,33 @@ class _WaiterShellState extends State<WaiterShell> {
   }
 
   Widget _buildCurrentView() {
+    // Use IndexedStack for the 3 main views to keep them alive
+    // Other views (from sidebar) are shown on top
+    final mainViews = [
+      NewOrderView(
+        key: _newOrderKey,
+        initialTableNo: _viewParams?['tableNo'],
+        initialOrderType: _viewParams?['orderType'],
+        onOrderCreated: () => _switchView('Tables'),
+      ),
+      TablesView(
+        onAddItems: (tableNo) {
+          _switchView('New Order', {
+            'tableNo': tableNo,
+            'orderType': 'Dine-In',
+          });
+        },
+        onCheckout: (tableNo) {
+          _switchView('Checkout', {'tableNo': tableNo});
+        },
+      ),
+      CheckoutView(key: _checkoutKey, tableNo: _viewParams?['tableNo']),
+    ];
+
+    // For non-main views, show them directly
     switch (_currentViewTitle) {
-      case 'New Order':
-        return NewOrderView(
-          initialTableNo: _viewParams?['tableNo'],
-          initialOrderType: _viewParams?['orderType'],
-          onOrderCreated: () => _switchView('Tables'),
-        );
-      case 'Tables':
-        return TablesView(
-          onAddItems: (tableNo) {
-            _switchView('New Order', {
-              'tableNo': tableNo,
-              'orderType': 'Dine-In',
-            });
-          },
-          onCheckout: (tableNo) {
-            _switchView('Checkout', {'tableNo': tableNo});
-          },
-        );
       case 'Reservations':
         return const ReservationsView();
-      case 'Checkout':
-        return CheckoutView(tableNo: _viewParams?['tableNo']);
       case 'Orders':
         return const OrderHistoryView();
       case 'Bills':
@@ -187,7 +203,15 @@ class _WaiterShellState extends State<WaiterShell> {
       case 'Printers':
         return const PrinterView();
       default:
-        return const NewOrderView();
+        // Main views use IndexedStack
+        final stackIndex = _currentViewTitle == 'New Order' ? 0
+            : _currentViewTitle == 'Tables' ? 1
+            : _currentViewTitle == 'Checkout' ? 2
+            : 0;
+        return IndexedStack(
+          index: stackIndex,
+          children: mainViews,
+        );
     }
   }
 

@@ -21,6 +21,7 @@ class _TablesViewState extends State<TablesView> {
   Map<String, List<PosOrder>> tableOrders = {};
   bool isLoading = true;
   StreamSubscription? _eventSubscription;
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -32,6 +33,7 @@ class _TablesViewState extends State<TablesView> {
   @override
   void dispose() {
     _eventSubscription?.cancel();
+    _debounce?.cancel();
     super.dispose();
   }
 
@@ -40,7 +42,11 @@ class _TablesViewState extends State<TablesView> {
       if (event.eventType == 'table_updated' ||
           event.eventType == 'order_created' ||
           event.eventType == 'order_updated') {
-        _loadDataQuietly();
+        // Debounce: coalesce multiple rapid events into one reload
+        _debounce?.cancel();
+        _debounce = Timer(const Duration(milliseconds: 300), () {
+          _loadDataQuietly();
+        });
       }
     });
   }
@@ -56,7 +62,7 @@ class _TablesViewState extends State<TablesView> {
       final fetchedTables = await client.tables.getAll();
       final fetchedOrders = await client.orders.getAll(
         includeItems: true,
-        statusFilter: 'Pending,In Progress,Ready,Scheduled,Served',
+        statusFilter: 'Pending,In Progress,Ready,Scheduled,Served,Paid',
       );
 
       final Map<String, List<PosOrder>> ordersMap = {};

@@ -213,9 +213,48 @@ class OrdersEndpoint extends Endpoint {
     // Normalize 'Mark Ready' -> 'Ready'
     final normalizedStatus = status == 'Mark Ready' ? 'Ready' : status;
 
+    // If this order is already Paid (customer paid before food was ready),
+    // and the kitchen is now marking it Ready or Served, complete the order.
+    String finalStatus;
+    if (existing.status == 'Paid') {
+      final completionStatuses = {'Ready', 'Served', 'Mark Ready'};
+      if (completionStatuses.contains(status)) {
+        finalStatus = 'Completed';
+
+        // Free up the table since the order is now complete
+        if (existing.tableNo != null) {
+          final otherActiveOrders = await PosOrder.db.find(
+            session,
+            where: (t) =>
+                t.tableNo.equals(existing.tableNo!) &
+                t.id.notEquals(existing.id!) &
+                t.status.notEquals('Completed') &
+                t.status.notEquals('Cancelled'),
+          );
+
+          if (otherActiveOrders.isEmpty) {
+            final tables = await RestaurantTable.db.find(
+              session,
+              where: (t) => t.tableNumber.equals(existing.tableNo!),
+              limit: 1,
+            );
+            if (tables.isNotEmpty) {
+              await RestaurantTable.db.deleteRow(session, tables.first);
+            }
+          }
+          await EventService.broadcast(session, 'table_updated');
+        }
+      } else {
+        // Kitchen is starting work (Pending -> In Progress), keep as Paid
+        finalStatus = 'Paid';
+      }
+    } else {
+      finalStatus = normalizedStatus;
+    }
+
     final updated = await PosOrder.db.updateRow(
       session,
-      existing.copyWith(status: normalizedStatus, updatedAt: DateTime.now()),
+      existing.copyWith(status: finalStatus, updatedAt: DateTime.now()),
     );
     await EventService.broadcast(session, 'order_updated');
     return updated;

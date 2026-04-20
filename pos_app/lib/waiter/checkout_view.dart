@@ -31,6 +31,7 @@ class _CheckoutViewState extends State<CheckoutView> {
   Map<int, int> itemQuantitiesToPay = {};
   List<double> customShares = [0.0];
   StreamSubscription? _eventSubscription;
+  Timer? _debounce;
 
   double get amountToPay {
     if (selectedOrder == null) return 0.0;
@@ -68,6 +69,7 @@ class _CheckoutViewState extends State<CheckoutView> {
   @override
   void dispose() {
     _eventSubscription?.cancel();
+    _debounce?.cancel();
     _taxNumberController.dispose();
     _customAmountController.dispose();
     super.dispose();
@@ -77,7 +79,10 @@ class _CheckoutViewState extends State<CheckoutView> {
     _eventSubscription = posEventStreamController.stream.listen((event) {
       if (event.eventType == 'order_updated' ||
           event.eventType == 'order_created') {
-        _loadActiveOrdersQuietly();
+        _debounce?.cancel();
+        _debounce = Timer(const Duration(milliseconds: 300), () {
+          _loadActiveOrdersQuietly();
+        });
       }
     });
   }

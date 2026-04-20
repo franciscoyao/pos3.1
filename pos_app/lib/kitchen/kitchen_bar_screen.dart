@@ -22,6 +22,7 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
   List<PosOrder> allOrders = [];
   bool isLoading = true;
   StreamSubscription? _subscription;
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -33,6 +34,7 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
   @override
   void dispose() {
     _subscription?.cancel();
+    _debounce?.cancel();
     super.dispose();
   }
 
@@ -41,7 +43,10 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
       if (event.eventType == 'order_created' ||
           event.eventType == 'order_updated' ||
           event.eventType == 'table_updated') {
-        _loadOrdersQuietly();
+        _debounce?.cancel();
+        _debounce = Timer(const Duration(milliseconds: 300), () {
+          _loadOrdersQuietly();
+        });
       }
     });
   }
@@ -56,7 +61,7 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
     try {
       final fetched = await client.orders.getAll(
         includeItems: true,
-        statusFilter: 'Pending,In Progress,Ready,Scheduled',
+        statusFilter: 'Pending,In Progress,Ready,Scheduled,Paid',
         stationFilter: widget.station,
       );
       if (mounted) {
@@ -323,6 +328,8 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
       _buildKanbanColumn('In Progress', 'In Progress', isMobile),
       if (!isMobile) const SizedBox(width: 24),
       _buildKanbanColumn('Ready', 'Ready', isMobile),
+      if (!isMobile) const SizedBox(width: 24),
+      _buildKanbanColumn('Paid', 'Paid', isMobile),
     ];
 
     if (isMobile) {
@@ -477,6 +484,26 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
                 ),
                 if (isUrgent)
                   const Icon(Icons.priority_high, color: Colors.red, size: 18),
+                if (order.status == 'Paid')
+                  Container(
+                    margin: const EdgeInsets.only(right: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'PAID',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 Text(
                   '${timeAgo}m',
                   style: TextStyle(
@@ -585,6 +612,11 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
       case 'Ready':
         nextStatus = 'Served';
         label = 'Served';
+        color = const Color(0xFF10B981);
+        break;
+      case 'Paid':
+        nextStatus = 'Served';
+        label = 'Complete';
         color = const Color(0xFF10B981);
         break;
     }
