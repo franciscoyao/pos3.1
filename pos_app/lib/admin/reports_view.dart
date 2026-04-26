@@ -1,8 +1,13 @@
+import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
+import 'package:csv/csv.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 import '../main.dart';
 import '../shared/responsive_layout.dart';
 
@@ -109,6 +114,141 @@ class _ReportsViewState extends State<ReportsView> {
     }
   }
 
+  Future<void> _exportCSV() async {
+    if (reportData == null) return;
+    
+    try {
+      List<List<dynamic>> rows = [];
+      
+      rows.add(['Reports Dashboard - Export']);
+      rows.add(['Date Range', '${startDate != null ? DateFormat('MMM d, yyyy').format(startDate!) : 'All Time'} to ${endDate != null ? DateFormat('MMM d, yyyy').format(endDate!) : 'All Time'}']);
+      rows.add([]);
+      
+      rows.add(['Summary']);
+      rows.add(['Total Revenue', 'Total Orders', 'Avg Order Value']);
+      rows.add([reportData!['total_revenue'], reportData!['total_orders'], reportData!['avg_order_value']]);
+      rows.add([]);
+      
+      rows.add(['Sales by Day']);
+      rows.add(['Day', 'Revenue', 'Orders']);
+      final salesByDay = reportData!['sales_by_day'] as List<dynamic>? ?? [];
+      for (var item in salesByDay) {
+        rows.add([item['day'], item['revenue'], item['orders']]);
+      }
+      rows.add([]);
+      
+      rows.add(['Top Selling Items']);
+      rows.add(['Name', 'Quantity Sold', 'Revenue']);
+      final topItems = reportData!['top_items'] as List<dynamic>? ?? [];
+      for (var item in topItems) {
+        rows.add([item['name'], item['total_qty'], item['total_revenue']]);
+      }
+      
+      String csv = Csv().encode(rows);
+      
+      String? outputFile = await FilePicker.saveFile(
+        dialogTitle: 'Save CSV',
+        fileName: 'reports_export.csv',
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+      );
+      
+      if (outputFile != null) {
+        await File(outputFile).writeAsString(csv);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('CSV Exported Successfully!')));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+      }
+    }
+  }
+
+  Future<void> _exportPDF() async {
+    if (reportData == null) return;
+
+    try {
+      final pdf = pw.Document();
+      final currencyFormat = NumberFormat.simpleCurrency(name: 'EUR');
+      
+      final totalRevenue = reportData!['total_revenue'] ?? 0.0;
+      final totalOrders = reportData!['total_orders'] ?? 0;
+      final avgOrderValue = reportData!['avg_order_value'] ?? 0.0;
+      final salesByDay = reportData!['sales_by_day'] as List<dynamic>? ?? [];
+      final topItems = reportData!['top_items'] as List<dynamic>? ?? [];
+      
+      final dateStr = '${startDate != null ? DateFormat('MMM d, yyyy').format(startDate!) : 'All Time'} to ${endDate != null ? DateFormat('MMM d, yyyy').format(endDate!) : 'All Time'}';
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          build: (pw.Context context) {
+            return [
+              pw.Header(level: 0, child: pw.Text('Reports Dashboard')),
+              pw.Paragraph(text: 'Date Range: $dateStr'),
+              pw.SizedBox(height: 20),
+              
+              pw.Header(level: 1, child: pw.Text('Summary')),
+              pw.TableHelper.fromTextArray(
+                context: context,
+                headers: ['Total Revenue', 'Total Orders', 'Avg Order Value'],
+                data: [
+                  [currencyFormat.format(totalRevenue), totalOrders.toString(), currencyFormat.format(avgOrderValue)]
+                ]
+              ),
+              pw.SizedBox(height: 20),
+              
+              pw.Header(level: 1, child: pw.Text('Sales by Day')),
+              pw.TableHelper.fromTextArray(
+                context: context,
+                headers: ['Day', 'Revenue', 'Orders'],
+                data: salesByDay.map((e) => [
+                  e['day'], 
+                  currencyFormat.format(e['revenue']), 
+                  e['orders'].toString()
+                ]).toList(),
+              ),
+              pw.SizedBox(height: 20),
+              
+              pw.Header(level: 1, child: pw.Text('Top Selling Items')),
+              pw.TableHelper.fromTextArray(
+                context: context,
+                headers: ['Name', 'Quantity Sold', 'Revenue'],
+                data: topItems.map((e) => [
+                  e['name'],
+                  e['total_qty'].toString(),
+                  currencyFormat.format(e['total_revenue'])
+                ]).toList(),
+              ),
+            ];
+          }
+        )
+      );
+
+      final bytes = await pdf.save();
+      
+      String? outputFile = await FilePicker.saveFile(
+        dialogTitle: 'Save PDF',
+        fileName: 'reports_export.pdf',
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+      
+      if (outputFile != null) {
+        await File(outputFile).writeAsBytes(bytes);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PDF Exported Successfully!')));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -197,17 +337,17 @@ class _ReportsViewState extends State<ReportsView> {
           spacing: 12,
           runSpacing: 12,
           children: [
-            _buildExportButton('CSV', Icons.download_outlined),
-            _buildExportButton('PDF', Icons.picture_as_pdf_outlined),
+            _buildExportButton('CSV', Icons.download_outlined, _exportCSV),
+            _buildExportButton('PDF', Icons.picture_as_pdf_outlined, _exportPDF),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildExportButton(String label, IconData icon) {
+  Widget _buildExportButton(String label, IconData icon, VoidCallback onPressed) {
     return OutlinedButton.icon(
-      onPressed: () {},
+      onPressed: onPressed,
       icon: Icon(icon, size: 20),
       label: Text(label),
       style: OutlinedButton.styleFrom(
