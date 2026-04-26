@@ -4,6 +4,7 @@ import 'package:pos_server_client/pos_server_client.dart';
 import 'package:serverpod_flutter/serverpod_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'login_screen.dart';
+import 'shared/data_cache.dart';
 
 late Client client;
 late StreamController<PosEvent> posEventStreamController;
@@ -31,6 +32,7 @@ Future<void> initClient() async {
 void _startEventSubscription() {
   client.events.subscribe().listen(
     (event) {
+      DataCache.instance.handlePosEvent(event);
       posEventStreamController.add(event);
     },
     onError: (e) {

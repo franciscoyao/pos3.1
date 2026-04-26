@@ -149,9 +149,11 @@ class ProductTable extends StatelessWidget {
 
         return SingleChildScrollView(
           scrollDirection: Axis.vertical,
-          child: SizedBox(
-            width: double.infinity,
-            child: DataTable(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: MediaQuery.of(context).size.width,
+              child: DataTable(
               columnSpacing: 24,
               horizontalMargin: 24,
               headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
@@ -286,6 +288,7 @@ class ProductTable extends StatelessWidget {
                   ],
                 );
               }).toList(),
+              ),
             ),
           ),
         );

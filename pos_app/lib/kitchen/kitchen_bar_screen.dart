@@ -40,12 +40,19 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
 
   void _setupWebsocket() {
     _subscription = posEventStreamController.stream.listen((event) {
-      if (event.eventType == 'order_created' ||
-          event.eventType == 'order_updated' ||
-          event.eventType == 'table_updated') {
+      if (event.eventType == 'order_created') {
+        // Only auto-print on genuine new orders
         _debounce?.cancel();
         _debounce = Timer(const Duration(milliseconds: 300), () {
-          _loadOrdersQuietly();
+          _loadOrdersQuietly(autoPrint: true);
+        });
+      } else if (event.eventType == 'order_updated' ||
+          event.eventType == 'table_updated') {
+        // Refresh the display but never auto-print — items may have just been
+        // moved between tables, and we don't want duplicate KOTs.
+        _debounce?.cancel();
+        _debounce = Timer(const Duration(milliseconds: 300), () {
+          _loadOrdersQuietly(autoPrint: false);
         });
       }
     });
@@ -53,11 +60,11 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
 
   Future<void> _loadOrders() async {
     setState(() => isLoading = true);
-    await _loadOrdersQuietly();
+    await _loadOrdersQuietly(autoPrint: false);
     if (mounted) setState(() => isLoading = false);
   }
 
-  Future<void> _loadOrdersQuietly() async {
+  Future<void> _loadOrdersQuietly({required bool autoPrint}) async {
     try {
       final fetched = await client.orders.getAll(
         includeItems: true,
@@ -65,16 +72,13 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
         stationFilter: widget.station,
       );
       if (mounted) {
-        // Auto-print newly incoming pending orders
-        if (allOrders.isNotEmpty) {
-          final existingPendingIds = allOrders
-              .where((o) => o.status == 'Pending')
-              .map((o) => o.id)
-              .toSet();
+        // Auto-print ONLY when triggered by a genuine order_created event
+        if (autoPrint && allOrders.isNotEmpty) {
+          final existingIds = allOrders.map((o) => o.id).toSet();
           final newPendingOrders = fetched
               .where(
                 (o) =>
-                    o.status == 'Pending' && !existingPendingIds.contains(o.id),
+                    o.status == 'Pending' && !existingIds.contains(o.id),
               )
               .toList();
 
@@ -98,20 +102,57 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveLayout.isMobile(context);
+
+    Widget body = Column(
+      children: [
+        _buildTopBar(),
+        _buildSubHeader(),
+        if (isMobile && !isLoading)
+          TabBar(
+            isScrollable: true,
+            labelColor: const Color(0xFF0F172A),
+            unselectedLabelColor: Colors.grey,
+            indicatorColor: const Color(0xFF0F172A),
+            tabs: [
+              Tab(text: 'Scheduled (${allOrders.where((o) => o.status == 'Scheduled').length})'),
+              Tab(text: 'Pending (${allOrders.where((o) => o.status == 'Pending').length})'),
+              Tab(text: 'In Progress (${allOrders.where((o) => o.status == 'In Progress').length})'),
+              Tab(text: 'Ready (${allOrders.where((o) => o.status == 'Ready').length})'),
+              Tab(text: 'Paid (${allOrders.where((o) => o.status == 'Paid').length})'),
+            ],
+          ),
+        Expanded(
+          child: isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : (isMobile ? _buildMobileTabBarView() : _buildKanbanBoard()),
+        ),
+      ],
+    );
+
+    if (isMobile && !isLoading) {
+      body = DefaultTabController(
+        length: 5,
+        child: body,
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       drawer: _buildDrawer(),
-      body: Column(
-        children: [
-          _buildTopBar(),
-          _buildSubHeader(),
-          Expanded(
-            child: isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _buildKanbanBoard(),
-          ),
-        ],
-      ),
+      body: body,
+    );
+  }
+
+  Widget _buildMobileTabBarView() {
+    return TabBarView(
+      children: [
+        _buildKanbanColumn('Scheduled', 'Scheduled', true),
+        _buildKanbanColumn('Pending', 'Pending', true),
+        _buildKanbanColumn('In Progress', 'In Progress', true),
+        _buildKanbanColumn('Ready', 'Ready', true),
+        _buildKanbanColumn('Paid', 'Paid', true),
+      ],
     );
   }
 
@@ -319,26 +360,17 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
   }
 
   Widget _buildKanbanBoard() {
-    final isMobile = ResponsiveLayout.isMobile(context);
     final columns = [
-      _buildKanbanColumn('Scheduled', 'Scheduled', isMobile),
-      if (!isMobile) const SizedBox(width: 24),
-      _buildKanbanColumn('Pending', 'Pending', isMobile),
-      if (!isMobile) const SizedBox(width: 24),
-      _buildKanbanColumn('In Progress', 'In Progress', isMobile),
-      if (!isMobile) const SizedBox(width: 24),
-      _buildKanbanColumn('Ready', 'Ready', isMobile),
-      if (!isMobile) const SizedBox(width: 24),
-      _buildKanbanColumn('Paid', 'Paid', isMobile),
+      _buildKanbanColumn('Scheduled', 'Scheduled', false),
+      const SizedBox(width: 24),
+      _buildKanbanColumn('Pending', 'Pending', false),
+      const SizedBox(width: 24),
+      _buildKanbanColumn('In Progress', 'In Progress', false),
+      const SizedBox(width: 24),
+      _buildKanbanColumn('Ready', 'Ready', false),
+      const SizedBox(width: 24),
+      _buildKanbanColumn('Paid', 'Paid', false),
     ];
-
-    if (isMobile) {
-      return ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        children: columns,
-      );
-    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -353,36 +385,37 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
     final orders = allOrders.where((o) => o.status == status).toList();
     final child = Column(
       children: [
-        Padding(
-          padding: EdgeInsets.only(bottom: isMobile ? 12 : 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: isMobile ? 14 : 16,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF0F172A),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE2E8F0),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${orders.length}',
-                  style: TextStyle(
-                    fontSize: isMobile ? 11 : 12,
-                    fontWeight: FontWeight.bold,
+        if (!isMobile)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF0F172A),
                   ),
                 ),
-              ),
-            ],
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${orders.length}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
         Expanded(
           child: orders.isEmpty
               ? Center(
@@ -392,6 +425,7 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
                   ),
                 )
               : ListView.builder(
+                  padding: isMobile ? const EdgeInsets.all(16) : null,
                   itemCount: orders.length,
                   itemBuilder: (context, index) =>
                       _buildOrderCard(orders[index]),
@@ -401,11 +435,7 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
     );
 
     if (isMobile) {
-      return Container(
-        width: MediaQuery.of(context).size.width * 0.85,
-        margin: const EdgeInsets.only(right: 16),
-        child: child,
-      );
+      return child;
     }
     return Expanded(child: child);
   }
@@ -645,7 +675,7 @@ class _KitchenBarScreenState extends State<KitchenBarScreen> {
   Future<void> _updateStatus(PosOrder order, String status) async {
     try {
       await client.orders.updateStatus(order.id!, status);
-      _loadOrdersQuietly();
+      _loadOrdersQuietly(autoPrint: false);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(

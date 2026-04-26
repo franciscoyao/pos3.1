@@ -24,6 +24,7 @@ abstract class OrderItem implements _i1.SerializableModel {
     double? totalPrice,
     this.notes,
     String? extras,
+    this.billingTableNo,
   }) : totalPrice = totalPrice ?? 0.0,
        extras = extras ?? '[]';
 
@@ -38,6 +39,7 @@ abstract class OrderItem implements _i1.SerializableModel {
     double? totalPrice,
     String? notes,
     String? extras,
+    String? billingTableNo,
   }) = _OrderItemImpl;
 
   factory OrderItem.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -52,6 +54,7 @@ abstract class OrderItem implements _i1.SerializableModel {
       totalPrice: (jsonSerialization['totalPrice'] as num?)?.toDouble(),
       notes: jsonSerialization['notes'] as String?,
       extras: jsonSerialization['extras'] as String?,
+      billingTableNo: jsonSerialization['billingTableNo'] as String?,
     );
   }
 
@@ -78,6 +81,8 @@ abstract class OrderItem implements _i1.SerializableModel {
 
   String? extras;
 
+  String? billingTableNo;
+
   /// Returns a shallow copy of this [OrderItem]
   /// with some or all fields replaced by the given arguments.
   @_i1.useResult
@@ -92,6 +97,7 @@ abstract class OrderItem implements _i1.SerializableModel {
     double? totalPrice,
     String? notes,
     String? extras,
+    String? billingTableNo,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -107,6 +113,7 @@ abstract class OrderItem implements _i1.SerializableModel {
       'totalPrice': totalPrice,
       if (notes != null) 'notes': notes,
       if (extras != null) 'extras': extras,
+      if (billingTableNo != null) 'billingTableNo': billingTableNo,
     };
   }
 
@@ -130,6 +137,7 @@ class _OrderItemImpl extends OrderItem {
     double? totalPrice,
     String? notes,
     String? extras,
+    String? billingTableNo,
   }) : super._(
          id: id,
          orderId: orderId,
@@ -141,6 +149,7 @@ class _OrderItemImpl extends OrderItem {
          totalPrice: totalPrice,
          notes: notes,
          extras: extras,
+         billingTableNo: billingTableNo,
        );
 
   /// Returns a shallow copy of this [OrderItem]
@@ -158,6 +167,7 @@ class _OrderItemImpl extends OrderItem {
     double? totalPrice,
     Object? notes = _Undefined,
     Object? extras = _Undefined,
+    Object? billingTableNo = _Undefined,
   }) {
     return OrderItem(
       id: id is int? ? id : this.id,
@@ -172,6 +182,9 @@ class _OrderItemImpl extends OrderItem {
       totalPrice: totalPrice ?? this.totalPrice,
       notes: notes is String? ? notes : this.notes,
       extras: extras is String? ? extras : this.extras,
+      billingTableNo: billingTableNo is String?
+          ? billingTableNo
+          : this.billingTableNo,
     );
   }
 }

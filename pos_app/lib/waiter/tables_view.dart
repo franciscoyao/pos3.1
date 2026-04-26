@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:pos_server_client/pos_server_client.dart';
 import '../main.dart';
 import '../shared/responsive_layout.dart';
+import '../shared/data_cache.dart';
 
 class TablesView extends StatefulWidget {
   final Function(String)? onAddItems;
@@ -59,7 +60,7 @@ class _TablesViewState extends State<TablesView> {
 
   Future<void> _loadDataQuietly() async {
     try {
-      final fetchedTables = await client.tables.getAll();
+      final fetchedTables = await DataCache.instance.getTables(client);
       final fetchedOrders = await client.orders.getAll(
         includeItems: true,
         statusFilter: 'Pending,In Progress,Ready,Scheduled,Served,Paid',
@@ -178,8 +179,8 @@ class _TablesViewState extends State<TablesView> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: ResponsiveLayout.isMobile(context) ? 240 : 220,
-            childAspectRatio: ResponsiveLayout.isMobile(context) ? 0.70 : 0.85,
+            maxCrossAxisExtent: ResponsiveLayout.isMobile(context) ? 400 : 220,
+            childAspectRatio: ResponsiveLayout.isMobile(context) ? 1.5 : 0.85,
             crossAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
             mainAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
           ),
@@ -210,8 +211,8 @@ class _TablesViewState extends State<TablesView> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: ResponsiveLayout.isMobile(context) ? 240 : 220,
-              childAspectRatio: ResponsiveLayout.isMobile(context) ? 0.70 : 0.85,
+              maxCrossAxisExtent: ResponsiveLayout.isMobile(context) ? 400 : 220,
+              childAspectRatio: ResponsiveLayout.isMobile(context) ? 1.5 : 0.85,
               crossAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
               mainAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
             ),
@@ -747,9 +748,13 @@ class _TablesViewState extends State<TablesView> {
                               final currentQty =
                                   selectedQuantities[item.id] ?? 0;
                               final isSelected = currentQty > 0;
+                              final alreadyAssigned = item.billingTableNo != null;
 
                               return Container(
                                 decoration: BoxDecoration(
+                                  color: alreadyAssigned
+                                      ? Colors.orange.shade50
+                                      : null,
                                   border: Border(
                                     bottom: BorderSide(
                                       color: Colors.grey[100]!,
@@ -769,7 +774,31 @@ class _TablesViewState extends State<TablesView> {
                                       });
                                     },
                                   ),
-                                  title: Text(item.productName ?? 'Unknown'),
+                                  title: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(item.productName ?? 'Unknown'),
+                                      ),
+                                      if (alreadyAssigned)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.orange.shade200,
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            'Bill: ${item.billingTableNo}',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
                                   subtitle: Text(
                                     '€${item.price.toStringAsFixed(2)} each (Max: ${item.quantity})',
                                   ),

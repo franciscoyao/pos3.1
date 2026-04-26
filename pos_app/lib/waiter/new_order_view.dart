@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:pos_server_client/pos_server_client.dart';
 import '../main.dart';
 import '../shared/responsive_layout.dart';
+import '../shared/data_cache.dart';
 
 class NewOrderView extends StatefulWidget {
   final String? initialTableNo;
@@ -54,7 +55,7 @@ class _NewOrderViewState extends State<NewOrderView> {
 
   Future<void> _setupWebsocket() async {
     _subscription = posEventStreamController.stream.listen((event) {
-      if (event.eventType == 'product_updated') {
+      if (event.eventType == 'product_updated' || event.eventType == 'category_updated') {
         _loadDataQuietly();
       }
     });
@@ -63,9 +64,9 @@ class _NewOrderViewState extends State<NewOrderView> {
   Future<void> _loadDataQuietly() async {
     try {
       final results = await Future.wait([
-        client.products.getPopular(orderType),
-        client.products.getAll(),
-        client.categories.getAll(),
+        DataCache.instance.getPopularProducts(client, orderType),
+        DataCache.instance.getProducts(client),
+        DataCache.instance.getCategories(client),
       ]);
 
       if (mounted) {
@@ -86,13 +87,12 @@ class _NewOrderViewState extends State<NewOrderView> {
   }
 
   Future<void> _loadData() async {
-    final isInitial = allProducts.isEmpty;
-    if (isInitial) setState(() => isLoading = true);
+    setState(() => isLoading = true);
     try {
       final results = await Future.wait([
-        client.products.getPopular(orderType),
-        isInitial ? client.products.getAll() : Future.value(allProducts),
-        isInitial ? client.categories.getAll() : Future.value(categories),
+        DataCache.instance.getPopularProducts(client, orderType),
+        DataCache.instance.getProducts(client),
+        DataCache.instance.getCategories(client),
       ]);
 
       if (mounted) {

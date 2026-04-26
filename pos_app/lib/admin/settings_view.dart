@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pos_server_client/pos_server_client.dart';
 import '../main.dart';
+import '../shared/responsive_layout.dart';
 
 class SettingsView extends StatefulWidget {
   const SettingsView({super.key});
@@ -101,7 +102,7 @@ class _SettingsViewState extends State<SettingsView> {
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(32.0),
+      padding: EdgeInsets.all(ResponsiveLayout.isMobile(context) ? 16.0 : 32.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -117,30 +118,53 @@ class _SettingsViewState extends State<SettingsView> {
             title: 'Tax & Service Configuration',
             subtitle: 'Set default tax and service rates',
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildField(
+                if (ResponsiveLayout.isMobile(context))
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildField(
                         label: 'Tax Rate (%)',
                         controller: _taxController,
                         hint: '10',
                         currentValue:
                             '${double.tryParse(_taxController.text)?.toStringAsFixed(2) ?? "0.00"}%',
                       ),
-                    ),
-                    const SizedBox(width: 24),
-                    Expanded(
-                      child: _buildField(
+                      const SizedBox(height: 16),
+                      _buildField(
                         label: 'Service Charge (%)',
                         controller: _serviceController,
                         hint: '5',
                         currentValue:
                             '${double.tryParse(_serviceController.text)?.toStringAsFixed(2) ?? "0.00"}%',
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildField(
+                          label: 'Tax Rate (%)',
+                          controller: _taxController,
+                          hint: '10',
+                          currentValue:
+                              '${double.tryParse(_taxController.text)?.toStringAsFixed(2) ?? "0.00"}%',
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                      Expanded(
+                        child: _buildField(
+                          label: 'Service Charge (%)',
+                          controller: _serviceController,
+                          hint: '5',
+                          currentValue:
+                              '${double.tryParse(_serviceController.text)?.toStringAsFixed(2) ?? "0.00"}%',
+                        ),
+                      ),
+                    ],
+                  ),
                 const SizedBox(height: 24),
                 _buildField(
                   label: 'Currency Symbol',
@@ -169,23 +193,33 @@ class _SettingsViewState extends State<SettingsView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildOutlinedButton(
-                        'Backup Database',
-                        Icons.download,
+                if (ResponsiveLayout.isMobile(context))
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildOutlinedButton('Backup Database', Icons.download),
+                      const SizedBox(height: 16),
+                      _buildOutlinedButton('Restore from Backup', Icons.upload),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildOutlinedButton(
+                          'Backup Database',
+                          Icons.download,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildOutlinedButton(
-                        'Restore from Backup',
-                        Icons.upload,
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildOutlinedButton(
+                          'Restore from Backup',
+                          Icons.upload,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
                 const SizedBox(height: 24),
                 const Text(
                   'Data Retention',

@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../main.dart';
@@ -146,17 +148,28 @@ class _ReportsViewState extends State<ReportsView> {
       
       String csv = Csv().encode(rows);
       
-      String? outputFile = await FilePicker.saveFile(
-        dialogTitle: 'Save CSV',
-        fileName: 'reports_export.csv',
-        type: FileType.custom,
-        allowedExtensions: ['csv'],
-      );
-      
-      if (outputFile != null) {
-        await File(outputFile).writeAsString(csv);
+      if (Platform.isAndroid || Platform.isIOS) {
+        final directory = await getTemporaryDirectory();
+        final path = '${directory.path}/reports_export.csv';
+        final file = File(path);
+        await file.writeAsString(csv);
+        await SharePlus.instance.share(ShareParams(files: [XFile(path)], text: 'Reports CSV Export'));
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('CSV Exported Successfully!')));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('CSV Shared Successfully!')));
+        }
+      } else {
+        String? outputFile = await FilePicker.saveFile(
+          dialogTitle: 'Save CSV',
+          fileName: 'reports_export.csv',
+          type: FileType.custom,
+          allowedExtensions: ['csv'],
+        );
+        
+        if (outputFile != null) {
+          await File(outputFile).writeAsString(csv);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('CSV Exported Successfully!')));
+          }
         }
       }
     } catch (e) {
@@ -229,17 +242,28 @@ class _ReportsViewState extends State<ReportsView> {
 
       final bytes = await pdf.save();
       
-      String? outputFile = await FilePicker.saveFile(
-        dialogTitle: 'Save PDF',
-        fileName: 'reports_export.pdf',
-        type: FileType.custom,
-        allowedExtensions: ['pdf'],
-      );
-      
-      if (outputFile != null) {
-        await File(outputFile).writeAsBytes(bytes);
+      if (Platform.isAndroid || Platform.isIOS) {
+        final directory = await getTemporaryDirectory();
+        final path = '${directory.path}/reports_export.pdf';
+        final file = File(path);
+        await file.writeAsBytes(bytes);
+        await SharePlus.instance.share(ShareParams(files: [XFile(path)], text: 'Reports PDF Export'));
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PDF Exported Successfully!')));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PDF Shared Successfully!')));
+        }
+      } else {
+        String? outputFile = await FilePicker.saveFile(
+          dialogTitle: 'Save PDF',
+          fileName: 'reports_export.pdf',
+          type: FileType.custom,
+          allowedExtensions: ['pdf'],
+        );
+        
+        if (outputFile != null) {
+          await File(outputFile).writeAsBytes(bytes);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PDF Exported Successfully!')));
+          }
         }
       }
     } catch (e) {
@@ -272,7 +296,7 @@ class _ReportsViewState extends State<ReportsView> {
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(32),
+      padding: EdgeInsets.all(ResponsiveLayout.isMobile(context) ? 16 : 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -389,6 +389,12 @@ class Protocol extends _i1.SerializationManagerServer {
           dartType: 'String?',
           columnDefault: '\'[]\'::text',
         ),
+        _i2.ColumnDefinition(
+          name: 'billingTableNo',
+          columnType: _i2.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
       ],
       foreignKeys: [],
       indexes: [

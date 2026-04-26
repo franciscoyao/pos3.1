@@ -6,6 +6,7 @@ import 'admin/admin_dashboard_screen.dart';
 import 'kiosk/kiosk_screen.dart';
 
 import 'kitchen/kitchen_bar_screen.dart';
+import 'shared/responsive_layout.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -333,7 +334,7 @@ class _LoginScreenState extends State<LoginScreen>
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
               child: Container(
-                width: 500,
+                width: ResponsiveLayout.isMobile(context) ? double.infinity : 500,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(24),
@@ -367,7 +368,7 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                       const SizedBox(height: 32),
 
-                      _buildRoleSelector(),
+                      _buildRoleSelector(context),
 
                       const SizedBox(height: 32),
 
@@ -607,20 +608,22 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildRoleSelector() {
+  Widget _buildRoleSelector(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Row(
-        children: roles.map((role) {
-          final isSelected = selectedRole == role['name'];
-          return Expanded(
-            child: GestureDetector(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: roles.map((role) {
+            final isSelected = selectedRole == role['name'];
+            return GestureDetector(
               onTap: () => _onRoleSelected(role['name'] as String),
               child: AnimatedContainer(
+                width: ResponsiveLayout.isMobile(context) ? 80 : 84,
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
@@ -662,9 +665,9 @@ class _LoginScreenState extends State<LoginScreen>
                   ],
                 ),
               ),
-            ),
-          );
-        }).toList(),
+            );
+          }).toList(),
+        ),
       ),
     );
   }

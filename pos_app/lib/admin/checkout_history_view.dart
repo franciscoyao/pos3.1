@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pos_server_client/pos_server_client.dart';
 import '../main.dart';
+import '../shared/responsive_layout.dart';
 
 class CheckoutHistoryView extends StatefulWidget {
   const CheckoutHistoryView({super.key});
@@ -108,7 +109,7 @@ class _CheckoutHistoryViewState extends State<CheckoutHistoryView> {
               ],
             ),
             content: SizedBox(
-              width: 400,
+              width: double.maxFinite,
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -209,19 +210,20 @@ class _CheckoutHistoryViewState extends State<CheckoutHistoryView> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveLayout.isMobile(context);
     return Padding(
-      padding: const EdgeInsets.all(32.0),
+      padding: EdgeInsets.all(isMobile ? 16.0 : 32.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeader(),
-          const SizedBox(height: 32),
+          SizedBox(height: isMobile ? 16 : 32),
           Expanded(
             child: isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : bills.isEmpty
                 ? _buildEmptyState()
-                : _buildHistoryTable(),
+                : (isMobile ? _buildMobileHistoryList() : _buildHistoryTable()),
           ),
         ],
       ),
@@ -268,6 +270,70 @@ class _CheckoutHistoryViewState extends State<CheckoutHistoryView> {
     );
   }
 
+  Widget _buildMobileHistoryList() {
+    final dateFormat = DateFormat('MMM dd, yyyy');
+    final timeFormat = DateFormat('hh:mm a');
+    return ListView.builder(
+      itemCount: bills.length,
+      itemBuilder: (context, index) {
+        final bill = bills[index];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey[100]!),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '#${bill.billNumber.substring(bill.billNumber.length - 6)}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      bill.createdAt != null ? dateFormat.format(bill.createdAt!) : 'N/A',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    ),
+                    Text(
+                      bill.createdAt != null ? timeFormat.format(bill.createdAt!) : '',
+                      style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                    ),
+                    Text(
+                      'Waiter: ${bill.waiterName ?? 'System'}',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '€${bill.total.toStringAsFixed(2)}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  const SizedBox(height: 4),
+                  _buildPaymentBadge(bill.paymentMethod ?? 'Unknown'),
+                ],
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                onPressed: () => _showBillDetails(bill),
+                icon: const Icon(Icons.receipt_outlined, size: 20, color: Colors.grey),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildHistoryTable() {
     final dateFormat = DateFormat('MMM dd, yyyy');
     final timeFormat = DateFormat('hh:mm a');
@@ -281,8 +347,10 @@ class _CheckoutHistoryViewState extends State<CheckoutHistoryView> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
-        child: DataTable(
-          headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
           columns: const [
             DataColumn(
               label: Text(
@@ -386,6 +454,7 @@ class _CheckoutHistoryViewState extends State<CheckoutHistoryView> {
                 ),
               )
               .toList(),
+          ),
         ),
       ),
     );

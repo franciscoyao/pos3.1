@@ -25,6 +25,7 @@ abstract class OrderItem
     double? totalPrice,
     this.notes,
     String? extras,
+    this.billingTableNo,
   }) : totalPrice = totalPrice ?? 0.0,
        extras = extras ?? '[]';
 
@@ -39,6 +40,7 @@ abstract class OrderItem
     double? totalPrice,
     String? notes,
     String? extras,
+    String? billingTableNo,
   }) = _OrderItemImpl;
 
   factory OrderItem.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -53,6 +55,7 @@ abstract class OrderItem
       totalPrice: (jsonSerialization['totalPrice'] as num?)?.toDouble(),
       notes: jsonSerialization['notes'] as String?,
       extras: jsonSerialization['extras'] as String?,
+      billingTableNo: jsonSerialization['billingTableNo'] as String?,
     );
   }
 
@@ -81,6 +84,8 @@ abstract class OrderItem
 
   String? extras;
 
+  String? billingTableNo;
+
   @override
   _i1.Table<int?> get table => t;
 
@@ -98,6 +103,7 @@ abstract class OrderItem
     double? totalPrice,
     String? notes,
     String? extras,
+    String? billingTableNo,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -113,6 +119,7 @@ abstract class OrderItem
       'totalPrice': totalPrice,
       if (notes != null) 'notes': notes,
       if (extras != null) 'extras': extras,
+      if (billingTableNo != null) 'billingTableNo': billingTableNo,
     };
   }
 
@@ -130,6 +137,7 @@ abstract class OrderItem
       'totalPrice': totalPrice,
       if (notes != null) 'notes': notes,
       if (extras != null) 'extras': extras,
+      if (billingTableNo != null) 'billingTableNo': billingTableNo,
     };
   }
 
@@ -177,6 +185,7 @@ class _OrderItemImpl extends OrderItem {
     double? totalPrice,
     String? notes,
     String? extras,
+    String? billingTableNo,
   }) : super._(
          id: id,
          orderId: orderId,
@@ -188,6 +197,7 @@ class _OrderItemImpl extends OrderItem {
          totalPrice: totalPrice,
          notes: notes,
          extras: extras,
+         billingTableNo: billingTableNo,
        );
 
   /// Returns a shallow copy of this [OrderItem]
@@ -205,6 +215,7 @@ class _OrderItemImpl extends OrderItem {
     double? totalPrice,
     Object? notes = _Undefined,
     Object? extras = _Undefined,
+    Object? billingTableNo = _Undefined,
   }) {
     return OrderItem(
       id: id is int? ? id : this.id,
@@ -219,6 +230,9 @@ class _OrderItemImpl extends OrderItem {
       totalPrice: totalPrice ?? this.totalPrice,
       notes: notes is String? ? notes : this.notes,
       extras: extras is String? ? extras : this.extras,
+      billingTableNo: billingTableNo is String?
+          ? billingTableNo
+          : this.billingTableNo,
     );
   }
 }
@@ -271,6 +285,12 @@ class OrderItemUpdateTable extends _i1.UpdateTable<OrderItemTable> {
     table.extras,
     value,
   );
+
+  _i1.ColumnValue<String, String> billingTableNo(String? value) =>
+      _i1.ColumnValue(
+        table.billingTableNo,
+        value,
+      );
 }
 
 class OrderItemTable extends _i1.Table<int?> {
@@ -314,6 +334,10 @@ class OrderItemTable extends _i1.Table<int?> {
       this,
       hasDefault: true,
     );
+    billingTableNo = _i1.ColumnString(
+      'billingTableNo',
+      this,
+    );
   }
 
   late final OrderItemUpdateTable updateTable;
@@ -336,6 +360,8 @@ class OrderItemTable extends _i1.Table<int?> {
 
   late final _i1.ColumnString extras;
 
+  late final _i1.ColumnString billingTableNo;
+
   @override
   List<_i1.Column> get columns => [
     id,
@@ -348,6 +374,7 @@ class OrderItemTable extends _i1.Table<int?> {
     totalPrice,
     notes,
     extras,
+    billingTableNo,
   ];
 }
 

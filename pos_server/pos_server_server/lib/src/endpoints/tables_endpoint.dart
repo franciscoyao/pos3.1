@@ -162,6 +162,10 @@ class TablesEndpoint extends Endpoint {
     await EventService.broadcast(session, 'order_updated');
   }
 
+  /// Tags selected items with a billingTableNo for split billing.
+  /// The original kitchen order is NEVER modified — items stay in their
+  /// original PosOrder so the kitchen sees no changes. Only the billing
+  /// grouping is updated.
   Future<bool> moveItemsToTable(
     Session session,
     List<int> itemIds,
@@ -169,102 +173,32 @@ class TablesEndpoint extends Endpoint {
     String targetTableNo,
   ) async {
     return await session.db.transaction<bool>((txSession) async {
-      final now = DateTime.now();
 
-      // 1. Find or create target table
-      final targetTables = await RestaurantTable.db.find(
-        session,
-        where: (t) => t.tableNumber.equals(targetTableNo),
-        limit: 1,
-        transaction: txSession,
-      );
-
-      RestaurantTable targetTable;
-      String orderCode;
-
-      if (targetTables.isNotEmpty && targetTables.first.status == 'Occupied') {
-        targetTable = targetTables.first;
-        orderCode = targetTable.orderCode!;
-      } else {
-        orderCode = 'ORD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-        if (targetTables.isNotEmpty) {
-          targetTable = await RestaurantTable.db.updateRow(
-            session,
-            targetTables.first.copyWith(
-              status: 'Occupied',
-              orderCode: orderCode,
-              updatedAt: now,
-            ),
-            transaction: txSession,
-          );
-        } else {
-          targetTable = await RestaurantTable.db.insertRow(
-            session,
-            RestaurantTable(
-              tableNumber: targetTableNo,
-              status: 'Occupied',
-              orderCode: orderCode,
-              updatedAt: now,
-              guestCount: 0,
-            ),
-            transaction: txSession,
-          );
-        }
-      }
-
-      // 2. Find or create the active order for the target table
-      final activeOrders = await PosOrder.db.find(
-        session,
-        where: (t) => t.orderCode.equals(orderCode) & t.status.notEquals('Completed') & t.status.notEquals('Cancelled'),
-        limit: 1,
-        transaction: txSession,
-      );
-
-      PosOrder targetOrder;
-      if (activeOrders.isNotEmpty) {
-        targetOrder = activeOrders.first;
-      } else {
-        targetOrder = await PosOrder.db.insertRow(
-          session,
-          PosOrder(
-            orderCode: orderCode,
-            orderType: 'Dine-In',
-            tableNo: targetTableNo,
-            status: 'Pending',
-            total: 0,
-            subtotal: 0,
-            createdAt: now,
-            updatedAt: now,
-          ),
-          transaction: txSession,
-        );
-      }
-
-      // 3. Move items and update totals
-      double totalMoved = 0;
       for (int i = 0; i < itemIds.length; i++) {
         final itemId = itemIds[i];
         final qtyToMove = quantities[i];
 
-        final existing = await OrderItem.db.findById(session, itemId, transaction: txSession);
+        final existing = await OrderItem.db.findById(
+          session,
+          itemId,
+          transaction: txSession,
+        );
         if (existing == null) continue;
 
         if (existing.quantity <= qtyToMove) {
-          // Move full item
-          totalMoved += existing.totalPrice;
+          // Tag the entire item to the billing table
           await OrderItem.db.updateRow(
             session,
-            existing.copyWith(orderId: targetOrder.id!),
+            existing.copyWith(billingTableNo: targetTableNo),
             transaction: txSession,
           );
         } else {
-          // Split item quantity
+          // Partially tag: shrink the original item's quantity,
+          // create a new sibling item (same orderId!) tagged to the billing table
           final pricePerUnit = existing.price;
-          final movedPrice = pricePerUnit * qtyToMove;
-          totalMoved += movedPrice;
-
-          // Update source item
           final remainingQty = existing.quantity - qtyToMove;
+
+          // Shrink original
           await OrderItem.db.updateRow(
             session,
             existing.copyWith(
@@ -274,61 +208,30 @@ class TablesEndpoint extends Endpoint {
             transaction: txSession,
           );
 
-          // Create new item in target order
+          // Create sibling tagged for billing table — same orderId, kitchen is unaffected
           await OrderItem.db.insertRow(
             session,
             OrderItem(
-              orderId: targetOrder.id!,
+              orderId: existing.orderId,
               productId: existing.productId,
               productName: existing.productName,
               productStation: existing.productStation,
               quantity: qtyToMove,
               price: pricePerUnit,
-              totalPrice: movedPrice,
+              totalPrice: qtyToMove * pricePerUnit,
               notes: existing.notes,
               extras: existing.extras,
+              billingTableNo: targetTableNo,
             ),
             transaction: txSession,
           );
         }
       }
 
-      // 4. Update order totals
-      // Update target
-      await PosOrder.db.updateRow(
-        session,
-        targetOrder.copyWith(
-          total: targetOrder.total + totalMoved,
-          subtotal: targetOrder.subtotal + totalMoved,
-          updatedAt: now,
-        ),
-        transaction: txSession,
-      );
-
-      // Update source(s) - for simplicity, we find the orders affected
-      final sourceOrderIds = (await OrderItem.db.find(session, where: (t) => t.id.inSet(itemIds.toSet()))).map((e) => e.orderId).toSet();
-      // Actually we already have the source items, but they might belong to different orders if a table has multiple.
-      // Re-calculating all affected source orders is safer.
-      for (final sId in sourceOrderIds) {
-        final sOrder = await PosOrder.db.findById(session, sId, transaction: txSession);
-        if (sOrder == null) continue;
-        
-        final sItems = await OrderItem.db.find(session, where: (t) => t.orderId.equals(sId), transaction: txSession);
-        final newTotal = sItems.fold(0.0, (sum, item) => sum + item.totalPrice);
-        
-        await PosOrder.db.updateRow(
-          session,
-          sOrder.copyWith(
-            total: newTotal,
-            subtotal: newTotal,
-            updatedAt: now,
-          ),
-          transaction: txSession,
-        );
-      }
-
-      await EventService.broadcast(session, 'order_updated');
+      // Broadcast table_updated so the waiter's tablet refreshes.
+      // No order_created is broadcast, so the kitchen will NOT print a new KOT.
       await EventService.broadcast(session, 'table_updated');
+      await EventService.broadcast(session, 'order_updated');
       return true;
     });
   }

@@ -4,6 +4,7 @@ import 'package:pos_server_client/pos_server_client.dart';
 import '../main.dart';
 import '../login_screen.dart';
 import '../shared/responsive_layout.dart';
+import '../shared/data_cache.dart';
 
 class KioskScreen extends StatefulWidget {
   const KioskScreen({super.key});
@@ -36,7 +37,7 @@ class _KioskScreenState extends State<KioskScreen> {
 
   Future<void> _setupWebsocket() async {
     _subscription = posEventStreamController.stream.listen((event) {
-      if (event.eventType == 'product_updated') {
+      if (event.eventType == 'product_updated' || event.eventType == 'category_updated') {
         _loadDataQuietly();
       }
     });
@@ -45,8 +46,8 @@ class _KioskScreenState extends State<KioskScreen> {
   Future<void> _loadDataQuietly() async {
     try {
       final results = await Future.wait([
-        client.products.getAll(),
-        client.categories.getAll(),
+        DataCache.instance.getProducts(client),
+        DataCache.instance.getCategories(client),
       ]);
 
       if (mounted) {
@@ -73,8 +74,8 @@ class _KioskScreenState extends State<KioskScreen> {
     setState(() => _isLoading = true);
     try {
       final results = await Future.wait([
-        client.products.getAll(),
-        client.categories.getAll(),
+        DataCache.instance.getProducts(client),
+        DataCache.instance.getCategories(client),
       ]);
 
       if (mounted) {
@@ -414,8 +415,8 @@ class _KioskScreenState extends State<KioskScreen> {
     return GridView.builder(
       padding: EdgeInsets.all(ResponsiveLayout.isMobile(context) ? 16 : 32),
       gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: ResponsiveLayout.isMobile(context) ? 200 : 250,
-        childAspectRatio: ResponsiveLayout.isMobile(context) ? 0.75 : 0.85,
+        maxCrossAxisExtent: ResponsiveLayout.isMobile(context) ? 400 : 250,
+        childAspectRatio: ResponsiveLayout.isMobile(context) ? 3.0 : 0.85,
         crossAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
         mainAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
       ),
@@ -426,13 +427,15 @@ class _KioskScreenState extends State<KioskScreen> {
   }
 
   Widget _buildProductCard(Product p) {
+    final isMobile = ResponsiveLayout.isMobile(context);
+
     return InkWell(
       onTap: () => _addToCart(p),
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(isMobile ? 16 : 24),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(isMobile ? 16 : 24),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -441,72 +444,133 @@ class _KioskScreenState extends State<KioskScreen> {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Placeholder for image
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.fastfood_rounded,
-                    size: 64,
-                    color: Colors.grey[300],
+        child: isMobile
+            ? Row(
+                children: [
+                  Container(
+                    width: 100,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.horizontal(left: Radius.circular(16)),
+                    ),
+                    child: Center(
+                      child: Icon(Icons.fastfood_rounded, size: 40, color: Colors.grey[300]),
+                    ),
                   ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            p.name,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0F172A),
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const Spacer(),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '€${p.price.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF0F172A),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.add,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    p.name,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F172A),
+                  // Placeholder for image
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          Icons.fastfood_rounded,
+                          size: 64,
+                          color: Colors.grey[300],
+                        ),
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '€${p.price.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF0F172A),
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          p.name,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0F172A),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF0F172A),
-                          shape: BoxShape.circle,
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '€${p.price.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF0F172A),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF0F172A),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.add,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ],
                         ),
-                        child: const Icon(
-                          Icons.add,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }

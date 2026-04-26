@@ -10,6 +10,7 @@ fields:
   totalPrice: double, default=0
   notes: String?
   extras: String?, default='[]'
+  billingTableNo: String?
 indexes:
   order_items_order_idx:
     fields: orderId

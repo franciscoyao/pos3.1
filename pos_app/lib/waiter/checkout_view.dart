@@ -1,5 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:csv/csv.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:intl/intl.dart';
 import 'package:pos_server_client/pos_server_client.dart';
 import '../main.dart';
 import '../shared/printer_service.dart';
@@ -164,13 +171,14 @@ class _CheckoutViewState extends State<CheckoutView> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveLayout.isMobile(context);
     return Padding(
-      padding: const EdgeInsets.all(32.0),
+      padding: EdgeInsets.all(isMobile ? 16.0 : 32.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeader(),
-          const SizedBox(height: 32),
+          SizedBox(height: isMobile ? 16 : 32),
           Expanded(
             child: isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -200,14 +208,46 @@ class _CheckoutViewState extends State<CheckoutView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Order Summary',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Table ${order.tableNo ?? "N/A"}',
-            style: TextStyle(color: Colors.grey[500]),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Order Summary',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Table ${order.tableNo ?? "N/A"}',
+                      style: TextStyle(color: Colors.grey[500]),
+                    ),
+                  ],
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.table_chart_outlined, color: Colors.blue),
+                    tooltip: 'Export CSV',
+                    onPressed: () => _exportOrderCSV(order),
+                    constraints: const BoxConstraints(),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.picture_as_pdf_outlined, color: Colors.red),
+                    tooltip: 'Export PDF',
+                    onPressed: () => _exportOrderPDF(order),
+                    constraints: const BoxConstraints(),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  ),
+                ],
+              ),
+            ],
           ),
           const SizedBox(height: 24),
           Container(
@@ -351,17 +391,16 @@ class _CheckoutViewState extends State<CheckoutView> {
               color: const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildSplitTab('None'),
-                  _buildSplitTab('Part'),
-                  _buildSplitTab('Item'),
-                  _buildSplitTab('Seat'),
-                  _buildSplitTab('%'),
-                ],
-              ),
+            child: Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: [
+                _buildSplitTab('None'),
+                _buildSplitTab('Part'),
+                _buildSplitTab('Item'),
+                _buildSplitTab('Seat'),
+                _buildSplitTab('%'),
+              ],
             ),
           ),
           const SizedBox(height: 24),
@@ -1011,12 +1050,20 @@ class _CheckoutViewState extends State<CheckoutView> {
   }
 
   Widget _buildOrdersGrid() {
+    if (ResponsiveLayout.isMobile(context)) {
+      return ListView.separated(
+        itemCount: filteredOrders.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 16),
+        itemBuilder: (context, index) => _buildOrderCheckoutCard(filteredOrders[index]),
+      );
+    }
+
     return GridView.builder(
-      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 250,
         childAspectRatio: 0.8,
-        crossAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
-        mainAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
+        crossAxisSpacing: 24,
+        mainAxisSpacing: 24,
       ),
       itemCount: filteredOrders.length,
       itemBuilder: (context, index) =>
@@ -1025,8 +1072,9 @@ class _CheckoutViewState extends State<CheckoutView> {
   }
 
   Widget _buildOrderCheckoutCard(PosOrder order) {
+    final isMobile = ResponsiveLayout.isMobile(context);
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isMobile ? 16 : 24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -1041,6 +1089,7 @@ class _CheckoutViewState extends State<CheckoutView> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: isMobile ? MainAxisSize.min : MainAxisSize.max,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1068,13 +1117,13 @@ class _CheckoutViewState extends State<CheckoutView> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: isMobile ? 12 : 20),
           Text(
             '€${order.total.toStringAsFixed(2)}',
-            style: const TextStyle(
-              fontSize: 32,
+            style: TextStyle(
+              fontSize: isMobile ? 24 : 32,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF0F172A),
+              color: const Color(0xFF0F172A),
             ),
           ),
           const SizedBox(height: 8),
@@ -1082,7 +1131,7 @@ class _CheckoutViewState extends State<CheckoutView> {
             '${(order.items ?? []).length} items',
             style: TextStyle(color: Colors.grey[500]),
           ),
-          const Spacer(),
+          if (isMobile) const SizedBox(height: 16) else const Spacer(),
           ElevatedButton(
             onPressed: () {
               setState(() {
@@ -1186,6 +1235,139 @@ class _CheckoutViewState extends State<CheckoutView> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to finalize payment: $e')),
         );
+      }
+    }
+  }
+  Future<void> _exportOrderCSV(PosOrder order) async {
+    try {
+      List<List<dynamic>> rows = [];
+      rows.add(['Order Receipt']);
+      rows.add(['Table', order.tableNo ?? 'N/A']);
+      rows.add(['Order ID', order.orderCode ?? 'N/A']);
+      rows.add(['Date', DateFormat('MMM d, yyyy HH:mm').format(order.createdAt ?? DateTime.now())]);
+      rows.add([]);
+      rows.add(['Item', 'Quantity', 'Unit Price', 'Total']);
+      
+      for (var item in order.items ?? []) {
+        final unitPrice = item.quantity > 0 ? item.totalPrice / item.quantity : 0.0;
+        rows.add([item.productName, item.quantity, unitPrice.toStringAsFixed(2), item.totalPrice.toStringAsFixed(2)]);
+      }
+      
+      rows.add([]);
+      rows.add(['', '', 'Subtotal', order.subtotal.toStringAsFixed(2)]);
+      rows.add(['', '', 'Total', order.total.toStringAsFixed(2)]);
+      
+      String csv = Csv().encode(rows);
+      
+      if (Platform.isAndroid || Platform.isIOS) {
+        final directory = await getTemporaryDirectory();
+        final path = '${directory.path}/receipt_${order.orderCode ?? "order"}.csv';
+        final file = File(path);
+        await file.writeAsString(csv);
+        await SharePlus.instance.share(ShareParams(files: [XFile(path)], text: 'Order Receipt CSV'));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('CSV Shared Successfully!')));
+        }
+      } else {
+        String? outputFile = await FilePicker.saveFile(
+          dialogTitle: 'Save CSV',
+          fileName: 'receipt_${order.orderCode ?? "order"}.csv',
+          type: FileType.custom,
+          allowedExtensions: ['csv'],
+        );
+        
+        if (outputFile != null) {
+          await File(outputFile).writeAsString(csv);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('CSV Exported Successfully!')));
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+      }
+    }
+  }
+
+  Future<void> _exportOrderPDF(PosOrder order) async {
+    try {
+      final pdf = pw.Document();
+      final currencyFormat = NumberFormat.simpleCurrency(name: 'EUR');
+      
+      pdf.addPage(
+        pw.Page(
+          build: (pw.Context context) {
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('Order Receipt', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 16),
+                pw.Text('Table: ${order.tableNo ?? "N/A"}'),
+                pw.Text('Order ID: #${order.orderCode ?? "N/A"}'),
+                pw.Text('Date: ${DateFormat('MMM d, yyyy HH:mm').format(order.createdAt ?? DateTime.now())}'),
+                pw.SizedBox(height: 24),
+                pw.TableHelper.fromTextArray(
+                  context: context,
+                  headers: ['Item', 'Quantity', 'Unit Price', 'Total'],
+                  data: (order.items ?? []).map((item) {
+                    final unitPrice = item.quantity > 0 ? item.totalPrice / item.quantity : 0.0;
+                    return [
+                      item.productName,
+                      item.quantity.toString(),
+                      currencyFormat.format(unitPrice),
+                      currencyFormat.format(item.totalPrice)
+                    ];
+                  }).toList(),
+                ),
+                pw.SizedBox(height: 16),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.end,
+                  children: [
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.end,
+                      children: [
+                        pw.Text('Subtotal: ${currencyFormat.format(order.subtotal)}'),
+                        pw.Text('Total: ${currencyFormat.format(order.total)}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16)),
+                      ]
+                    )
+                  ]
+                )
+              ]
+            );
+          }
+        )
+      );
+
+      final bytes = await pdf.save();
+      
+      if (Platform.isAndroid || Platform.isIOS) {
+        final directory = await getTemporaryDirectory();
+        final path = '${directory.path}/receipt_${order.orderCode ?? "order"}.pdf';
+        final file = File(path);
+        await file.writeAsBytes(bytes);
+        await SharePlus.instance.share(ShareParams(files: [XFile(path)], text: 'Order Receipt PDF'));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PDF Shared Successfully!')));
+        }
+      } else {
+        String? outputFile = await FilePicker.saveFile(
+          dialogTitle: 'Save PDF',
+          fileName: 'receipt_${order.orderCode ?? "order"}.pdf',
+          type: FileType.custom,
+          allowedExtensions: ['pdf'],
+        );
+        
+        if (outputFile != null) {
+          await File(outputFile).writeAsBytes(bytes);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PDF Exported Successfully!')));
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
       }
     }
   }

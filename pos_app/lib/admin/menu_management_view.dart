@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:pos_server_client/pos_server_client.dart';
 import '../main.dart';
+import '../shared/data_cache.dart';
 import 'components/menu/product_dialog.dart';
 import 'components/menu/category_dialog.dart';
 import 'components/menu/subcategory_dialog.dart';
@@ -45,7 +46,7 @@ class _MenuManagementViewState extends State<MenuManagementView>
 
   void _subscribeToEvents() {
     _eventSubscription = posEventStreamController.stream.listen((event) {
-      if (event.eventType == 'product_updated') {
+      if (event.eventType == 'product_updated' || event.eventType == 'category_updated') {
         _loadDataQuietly();
       }
     });
@@ -53,8 +54,8 @@ class _MenuManagementViewState extends State<MenuManagementView>
 
   Future<void> _loadDataQuietly() async {
     try {
-      final loadedProducts = await client.products.getAll();
-      final loadedCategories = await client.categories.getAll();
+      final loadedProducts = await DataCache.instance.getProducts(client);
+      final loadedCategories = await DataCache.instance.getCategories(client);
       final loadedSubcategories = await client.subcategories.getAll();
       if (mounted) {
         setState(() {
@@ -83,8 +84,8 @@ class _MenuManagementViewState extends State<MenuManagementView>
       selectedProductIds.clear();
     });
     try {
-      final loadedProducts = await client.products.getAll();
-      final loadedCategories = await client.categories.getAll();
+      final loadedProducts = await DataCache.instance.getProducts(client);
+      final loadedCategories = await DataCache.instance.getCategories(client);
       final loadedSubcategories = await client.subcategories.getAll();
       if (mounted) {
         setState(() {

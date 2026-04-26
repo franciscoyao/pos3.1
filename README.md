@@ -40,7 +40,7 @@ All screens share a single, persistent WebSocket connection to the Serverpod bac
 - **Table management** — view floor plan, assign orders to tables, track occupancy and guest count
 - **Order status pipeline** — `Pending → In Progress → Ready → Served → Paid → Completed`
 - **Scheduled orders** — support for future/timed orders
-- **Bill splitting** — split a single table order into multiple bills with individual calculations
+- **Bill splitting** — split a single table order into multiple bills with individual calculations. *Note: Table splitting separates the billing groups using tags but leaves the kitchen orders completely immutable once sent.*
 
 ### 💳 Payments & Checkout
 - **Waiter checkout** — apply tax, service charge, and tip; process full or split payment
