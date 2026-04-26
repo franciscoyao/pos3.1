@@ -178,8 +178,8 @@ class _TablesViewState extends State<TablesView> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: ResponsiveLayout.isMobile(context) ? 180 : 220,
-            childAspectRatio: 0.85,
+            maxCrossAxisExtent: ResponsiveLayout.isMobile(context) ? 240 : 220,
+            childAspectRatio: ResponsiveLayout.isMobile(context) ? 0.70 : 0.85,
             crossAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
             mainAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
           ),
@@ -210,8 +210,8 @@ class _TablesViewState extends State<TablesView> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: ResponsiveLayout.isMobile(context) ? 180 : 220,
-              childAspectRatio: 0.85,
+              maxCrossAxisExtent: ResponsiveLayout.isMobile(context) ? 240 : 220,
+              childAspectRatio: ResponsiveLayout.isMobile(context) ? 0.70 : 0.85,
               crossAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
               mainAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
             ),

@@ -55,9 +55,34 @@ class _NewOrderViewState extends State<NewOrderView> {
   Future<void> _setupWebsocket() async {
     _subscription = posEventStreamController.stream.listen((event) {
       if (event.eventType == 'product_updated') {
-        _loadData();
+        _loadDataQuietly();
       }
     });
+  }
+
+  Future<void> _loadDataQuietly() async {
+    try {
+      final results = await Future.wait([
+        client.products.getPopular(orderType),
+        client.products.getAll(),
+        client.categories.getAll(),
+      ]);
+
+      if (mounted) {
+        setState(() {
+          popularProducts = results[0] as List<Product>;
+          allProducts = results[1] as List<Product>;
+          categories = results[2] as List<Category>;
+          
+          if (selectedCategoryId != null &&
+              !categories.any((c) => c.id == selectedCategoryId)) {
+            selectedCategoryId = null;
+          }
+        });
+      }
+    } catch (e) {
+      // Silently fail for background updates
+    }
   }
 
   Future<void> _loadData() async {
@@ -75,7 +100,7 @@ class _NewOrderViewState extends State<NewOrderView> {
           popularProducts = results[0] as List<Product>;
           allProducts = results[1] as List<Product>;
           categories = results[2] as List<Category>;
-          if (categories.isNotEmpty) {
+          if (categories.isNotEmpty && selectedCategoryId == null) {
             selectedCategoryId = null; // 'All' selected by default
           }
           isLoading = false;
@@ -555,8 +580,8 @@ class _NewOrderViewState extends State<NewOrderView> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: ResponsiveLayout.isMobile(context) ? 180 : 220,
-            childAspectRatio: ResponsiveLayout.isMobile(context) ? 0.9 : 1.0,
+            maxCrossAxisExtent: ResponsiveLayout.isMobile(context) ? 400 : 220,
+            childAspectRatio: ResponsiveLayout.isMobile(context) ? 2.5 : 1.0,
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
           ),
@@ -645,15 +670,15 @@ class _NewOrderViewState extends State<NewOrderView> {
                 onPressed: () => _addToCart(p),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0F172A),
-                  minimumSize: const Size(50, 32),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: Size(ResponsiveLayout.isMobile(context) ? 80 : 50, ResponsiveLayout.isMobile(context) ? 48 : 32),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
+                child: Text(
                   'Add',
-                  style: TextStyle(color: Colors.white, fontSize: 12),
+                  style: TextStyle(color: Colors.white, fontSize: ResponsiveLayout.isMobile(context) ? 14 : 12),
                 ),
               ),
             ],
@@ -753,13 +778,13 @@ class _NewOrderViewState extends State<NewOrderView> {
               const SizedBox(width: 4),
               IconButton(
                 onPressed: () => _addToCart(p),
-                icon: const Icon(Icons.add, size: 18),
+                icon: Icon(Icons.add, size: ResponsiveLayout.isMobile(context) ? 24 : 18),
                 style: IconButton.styleFrom(
                   backgroundColor: const Color(0xFFF1F5F9),
-                  minimumSize: const Size(32, 32),
+                  minimumSize: Size(ResponsiveLayout.isMobile(context) ? 48 : 32, ResponsiveLayout.isMobile(context) ? 48 : 32),
                   padding: EdgeInsets.zero,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(ResponsiveLayout.isMobile(context) ? 12 : 8),
                   ),
                 ),
               ),
@@ -960,13 +985,12 @@ class _NewOrderViewState extends State<NewOrderView> {
           TextButton(
             onPressed: () => _showItemDetails(index),
             style: TextButton.styleFrom(
-              padding: EdgeInsets.zero,
-              minimumSize: const Size(0, 0),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              minimumSize: Size(80, ResponsiveLayout.isMobile(context) ? 48 : 36),
             ),
-            child: const Text(
+            child: Text(
               'Add details',
-              style: TextStyle(fontSize: 12, color: Colors.blue),
+              style: TextStyle(fontSize: ResponsiveLayout.isMobile(context) ? 14 : 12, color: Colors.blue),
             ),
           ),
         ],
@@ -984,9 +1008,8 @@ class _NewOrderViewState extends State<NewOrderView> {
         children: [
           IconButton(
             onPressed: () => _decrementCartItem(index),
-            icon: const Icon(Icons.remove, size: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            constraints: const BoxConstraints(),
+            icon: Icon(Icons.remove, size: ResponsiveLayout.isMobile(context) ? 20 : 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           ),
           Text(
             '${cart[index].quantity}',
@@ -994,9 +1017,8 @@ class _NewOrderViewState extends State<NewOrderView> {
           ),
           IconButton(
             onPressed: () => _incrementCartItem(index),
-            icon: const Icon(Icons.add, size: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            constraints: const BoxConstraints(),
+            icon: Icon(Icons.add, size: ResponsiveLayout.isMobile(context) ? 20 : 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           ),
         ],
       ),

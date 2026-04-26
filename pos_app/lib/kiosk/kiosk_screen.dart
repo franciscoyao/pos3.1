@@ -37,9 +37,36 @@ class _KioskScreenState extends State<KioskScreen> {
   Future<void> _setupWebsocket() async {
     _subscription = posEventStreamController.stream.listen((event) {
       if (event.eventType == 'product_updated') {
-        _loadData();
+        _loadDataQuietly();
       }
     });
+  }
+
+  Future<void> _loadDataQuietly() async {
+    try {
+      final results = await Future.wait([
+        client.products.getAll(),
+        client.categories.getAll(),
+      ]);
+
+      if (mounted) {
+        setState(() {
+          _allProducts = (results[0] as List<Product>).where((p) {
+            return p.type == 'Takeaway' || p.type == 'Both' || p.type == null;
+          }).toList();
+          _categories = (results[1] as List<Category>).where((c) {
+            return c.orderType == 'Takeaway' || c.orderType == 'Both';
+          }).toList();
+          
+          if (_selectedCategoryId != null &&
+              !_categories.any((c) => c.id == _selectedCategoryId)) {
+            _selectedCategoryId = null;
+          }
+        });
+      }
+    } catch (e) {
+      // Silently fail for background updates
+    }
   }
 
   Future<void> _loadData() async {
@@ -387,8 +414,8 @@ class _KioskScreenState extends State<KioskScreen> {
     return GridView.builder(
       padding: EdgeInsets.all(ResponsiveLayout.isMobile(context) ? 16 : 32),
       gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 250,
-        childAspectRatio: 0.85,
+        maxCrossAxisExtent: ResponsiveLayout.isMobile(context) ? 200 : 250,
+        childAspectRatio: ResponsiveLayout.isMobile(context) ? 0.75 : 0.85,
         crossAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
         mainAxisSpacing: ResponsiveLayout.isMobile(context) ? 16 : 24,
       ),
