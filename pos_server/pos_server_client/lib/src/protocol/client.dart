@@ -570,10 +570,16 @@ class EndpointReports extends _i2.EndpointRef {
   @override
   String get name => 'reports';
 
-  _i3.Future<String> getSummaryJson() => caller.callServerEndpoint<String>(
+  _i3.Future<String> getSummaryJson({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) => caller.callServerEndpoint<String>(
     'reports',
     'getSummaryJson',
-    {},
+    {
+      'startDate': startDate,
+      'endDate': endDate,
+    },
   );
 }
 

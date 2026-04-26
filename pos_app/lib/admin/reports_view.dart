@@ -15,6 +15,8 @@ class ReportsView extends StatefulWidget {
 
 class _ReportsViewState extends State<ReportsView> {
   String selectedTimeRange = 'This Week';
+  DateTime? startDate;
+  DateTime? endDate;
   Map<String, dynamic>? reportData;
   bool isLoading = true;
   String? errorMessage;
@@ -23,6 +25,7 @@ class _ReportsViewState extends State<ReportsView> {
   @override
   void initState() {
     super.initState();
+    _updateDatesFromTimeRange();
     _fetchReportData();
     _subscribeToEvents();
   }
@@ -31,6 +34,28 @@ class _ReportsViewState extends State<ReportsView> {
   void dispose() {
     _eventSubscription?.cancel();
     super.dispose();
+  }
+
+  void _updateDatesFromTimeRange() {
+    final now = DateTime.now();
+    switch (selectedTimeRange) {
+      case 'Today':
+        startDate = DateTime(now.year, now.month, now.day);
+        endDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
+        break;
+      case 'This Week':
+        final monday = now.subtract(Duration(days: now.weekday - 1));
+        startDate = DateTime(monday.year, monday.month, monday.day);
+        endDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
+        break;
+      case 'This Month':
+        startDate = DateTime(now.year, now.month, 1);
+        endDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
+        break;
+      case 'Custom':
+        // Don't auto-update dates for Custom
+        break;
+    }
   }
 
   void _subscribeToEvents() {
@@ -43,7 +68,10 @@ class _ReportsViewState extends State<ReportsView> {
 
   Future<void> _fetchReportDataQuietly() async {
     try {
-      final jsonString = await client.reports.getSummaryJson();
+      final jsonString = await client.reports.getSummaryJson(
+        startDate: startDate,
+        endDate: endDate,
+      );
       if (mounted) {
         setState(() {
           reportData = json.decode(jsonString);
@@ -61,7 +89,10 @@ class _ReportsViewState extends State<ReportsView> {
     });
 
     try {
-      final jsonString = await client.reports.getSummaryJson();
+      final jsonString = await client.reports.getSummaryJson(
+        startDate: startDate,
+        endDate: endDate,
+      );
       if (mounted) {
         setState(() {
           reportData = json.decode(jsonString);
@@ -222,12 +253,56 @@ class _ReportsViewState extends State<ReportsView> {
                           (e) => DropdownMenuItem(value: e, child: Text(e)),
                         )
                         .toList(),
-                    onChanged: (v) => setState(() => selectedTimeRange = v!),
+                    onChanged: (v) {
+                      setState(() {
+                        selectedTimeRange = v!;
+                        _updateDatesFromTimeRange();
+                      });
+                      _fetchReportData();
+                    },
                   ),
                 ),
               ),
-              _buildDateButton('Start Date', Icons.calendar_today_outlined),
-              _buildDateButton('End Date', Icons.calendar_today_outlined),
+              _buildDateButton(
+                'Start Date',
+                Icons.calendar_today_outlined,
+                startDate,
+                () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: startDate ?? DateTime.now(),
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) {
+                    setState(() {
+                      startDate = DateTime(picked.year, picked.month, picked.day);
+                      selectedTimeRange = 'Custom';
+                    });
+                    _fetchReportData();
+                  }
+                },
+              ),
+              _buildDateButton(
+                'End Date',
+                Icons.calendar_today_outlined,
+                endDate,
+                () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: endDate ?? startDate ?? DateTime.now(),
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) {
+                    setState(() {
+                      endDate = DateTime(picked.year, picked.month, picked.day, 23, 59, 59);
+                      selectedTimeRange = 'Custom';
+                    });
+                    _fetchReportData();
+                  }
+                },
+              ),
             ],
           ),
         ],
@@ -235,20 +310,28 @@ class _ReportsViewState extends State<ReportsView> {
     );
   }
 
-  Widget _buildDateButton(String label, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: Colors.grey[600]),
-          const SizedBox(width: 12),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-        ],
+  Widget _buildDateButton(String label, IconData icon, DateTime? selectedDate, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[200]!),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: Colors.grey[600]),
+            const SizedBox(width: 12),
+            Text(
+              selectedDate != null ? DateFormat('MMM d, yyyy').format(selectedDate) : label,
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
       ),
     );
   }

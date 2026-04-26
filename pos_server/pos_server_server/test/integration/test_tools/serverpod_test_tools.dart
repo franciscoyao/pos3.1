@@ -1391,8 +1391,10 @@ class _ReportsEndpoint {
   final _i2.SerializationManager _serializationManager;
 
   _i3.Future<String> getSummaryJson(
-    _i1.TestSessionBuilder sessionBuilder,
-  ) async {
+    _i1.TestSessionBuilder sessionBuilder, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
     return _i1.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
           (sessionBuilder as _i1.InternalTestSessionBuilder).internalBuild(
@@ -1404,7 +1406,10 @@ class _ReportsEndpoint {
           createSessionCallback: (_) => _localUniqueSession,
           endpointPath: 'reports',
           methodName: 'getSummaryJson',
-          parameters: _i1.testObjectToJson({}),
+          parameters: _i1.testObjectToJson({
+            'startDate': startDate,
+            'endDate': endDate,
+          }),
           serializationManager: _serializationManager,
         );
         var _localReturnValue =

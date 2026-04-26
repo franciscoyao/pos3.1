@@ -2,13 +2,31 @@ import 'package:serverpod/serverpod.dart';
 import 'dart:convert';
 
 class ReportsEndpoint extends Endpoint {
-  Future<String> getSummaryJson(Session session) async {
+  Future<String> getSummaryJson(Session session, {DateTime? startDate, DateTime? endDate}) async {
     try {
+      String dateFilterBills = '';
+      String dateFilterOrders = '';
+      
+      if (startDate != null && endDate != null) {
+        final startStr = startDate.toIso8601String();
+        final endStr = endDate.toIso8601String();
+        dateFilterBills = 'WHERE "createdAt" >= \'$startStr\' AND "createdAt" <= \'$endStr\'';
+        dateFilterOrders = 'WHERE o."createdAt" >= \'$startStr\' AND o."createdAt" <= \'$endStr\'';
+      } else if (startDate != null) {
+        final startStr = startDate.toIso8601String();
+        dateFilterBills = 'WHERE "createdAt" >= \'$startStr\'';
+        dateFilterOrders = 'WHERE o."createdAt" >= \'$startStr\'';
+      } else if (endDate != null) {
+        final endStr = endDate.toIso8601String();
+        dateFilterBills = 'WHERE "createdAt" <= \'$endStr\'';
+        dateFilterOrders = 'WHERE o."createdAt" <= \'$endStr\'';
+      }
+
       // Overall stats from bills
       List<List<dynamic>> statsResult;
       try {
         statsResult = await session.db.unsafeQuery(
-          'SELECT COALESCE(SUM(total), 0.0) AS total_revenue, COUNT(*) AS total_orders, COALESCE(AVG(total), 0.0) AS avg_order_value FROM bills',
+          'SELECT COALESCE(SUM(total), 0.0) AS total_revenue, COUNT(*) AS total_orders, COALESCE(AVG(total), 0.0) AS avg_order_value FROM bills $dateFilterBills',
         );
       } catch (e) {
         session.log('Error in stats query: $e', level: LogLevel.error);
@@ -17,7 +35,11 @@ class ReportsEndpoint extends Endpoint {
 
       final stats = statsResult.isNotEmpty ? statsResult.first : [0.0, 0, 0.0];
 
-      // Sales by day — last 7 days
+      // Sales by day
+      String salesByDayFilter = dateFilterBills.isNotEmpty 
+          ? dateFilterBills 
+          : 'WHERE "createdAt" >= NOW() - INTERVAL \'7 days\'';
+
       List<List<dynamic>> salesByDayResult;
       try {
         salesByDayResult = await session.db.unsafeQuery('''
@@ -26,7 +48,7 @@ class ReportsEndpoint extends Endpoint {
             COALESCE(SUM(total), 0.0) AS revenue,
             COUNT(*) AS orders
           FROM bills
-          WHERE "createdAt" >= NOW() - INTERVAL '7 days'
+          $salesByDayFilter
           GROUP BY "createdAt"::date
           ORDER BY "createdAt"::date ASC
         ''');
@@ -36,6 +58,8 @@ class ReportsEndpoint extends Endpoint {
       }
 
       // Sales by category
+      String categoryJoinOrders = dateFilterOrders.isNotEmpty ? 'JOIN pos_orders o ON oi."orderId" = o.id' : '';
+
       List<List<dynamic>> salesByCategoryResult;
       try {
         salesByCategoryResult = await session.db.unsafeQuery('''
@@ -45,6 +69,8 @@ class ReportsEndpoint extends Endpoint {
           FROM order_items oi
           JOIN products p ON oi."productId" = p.id
           LEFT JOIN categories c ON p."categoryId" = c.id
+          $categoryJoinOrders
+          $dateFilterOrders
           GROUP BY COALESCE(c.name, 'Uncategorized')
           ORDER BY revenue DESC
         ''');
@@ -65,6 +91,8 @@ class ReportsEndpoint extends Endpoint {
             SUM(oi.quantity) AS total_qty,
             SUM(oi.price * oi.quantity) AS total_revenue
           FROM order_items oi
+          $categoryJoinOrders
+          $dateFilterOrders
           GROUP BY COALESCE(oi."productName", 'Unknown')
           ORDER BY total_qty DESC
           LIMIT 5

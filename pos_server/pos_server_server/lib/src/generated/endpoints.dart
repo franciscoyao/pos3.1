@@ -990,13 +990,28 @@ class Endpoints extends _i1.EndpointDispatch {
       methodConnectors: {
         'getSummaryJson': _i1.MethodConnector(
           name: 'getSummaryJson',
-          params: {},
+          params: {
+            'startDate': _i1.ParameterDescription(
+              name: 'startDate',
+              type: _i1.getType<DateTime?>(),
+              nullable: true,
+            ),
+            'endDate': _i1.ParameterDescription(
+              name: 'endDate',
+              type: _i1.getType<DateTime?>(),
+              nullable: true,
+            ),
+          },
           call:
               (
                 _i1.Session session,
                 Map<String, dynamic> params,
-              ) async => (endpoints['reports'] as _i9.ReportsEndpoint)
-                  .getSummaryJson(session),
+              ) async =>
+                  (endpoints['reports'] as _i9.ReportsEndpoint).getSummaryJson(
+                    session,
+                    startDate: params['startDate'],
+                    endDate: params['endDate'],
+                  ),
         ),
       },
     );
